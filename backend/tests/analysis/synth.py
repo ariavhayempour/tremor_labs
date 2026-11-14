@@ -3,6 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
+
 GRAVITY_MS2 = 9.80665
 AXIS_WEIGHTS = (0.6, 0.6, 0.5)
 T0 = 1_700_000_000.0
@@ -49,3 +50,32 @@ def tof_track(
     rng = np.random.default_rng(seed + 1)
     rel = _times(seconds, fs, 0.0, rng)
     return T0 + rel, mm + rng.normal(0.0, noise, rel.size)
+
+
+DESCENT_HOLD_S = 1.0
+WOBBLE_HZ = 8.0
+WOBBLE_ZONE_MM = 50.0
+
+
+def _min_jerk(p: Arr) -> Arr:
+    return 10 * p**3 - 15 * p**4 + 6 * p**5
+
+
+def descent_tof(
+    start: float = 300,
+    end: float = 30,
+    seconds: float = 2.5,
+    fs: float = 40,
+    noise: float = 1.0,
+    wobble_mm: float = 0.0,
+    seed: int = 0,
+) -> tuple[Arr, Arr]:
+    """(t s, mm): 1 s at start, min-jerk descent, 1 s at end; 8 Hz wobble in the last 50 mm."""
+    rng = np.random.default_rng(seed + 2)
+    rel = _times(seconds + 2 * DESCENT_HOLD_S, fs, 0.0, rng)
+    progress = np.clip((rel - DESCENT_HOLD_S) / seconds, 0.0, 1.0)
+    path = start - (start - end) * _min_jerk(progress)
+    moving = (progress > 0) & (progress < 1)
+    zone = moving & (path < end + WOBBLE_ZONE_MM)
+    path = path + np.where(zone, wobble_mm * np.sin(2 * np.pi * WOBBLE_HZ * rel), 0.0)
+    return T0 + rel, path + rng.normal(0.0, noise, rel.size)
