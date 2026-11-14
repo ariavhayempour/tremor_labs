@@ -3,6 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
+from tremorlab.analysis.tap import EDGE_WINDOW_S, TapFrame
 
 GRAVITY_MS2 = 9.80665
 AXIS_WEIGHTS = (0.6, 0.6, 0.5)
@@ -79,3 +80,42 @@ def descent_tof(
     zone = moving & (path < end + WOBBLE_ZONE_MM)
     path = path + np.where(zone, wobble_mm * np.sin(2 * np.pi * WOBBLE_HZ * rel), 0.0)
     return T0 + rel, path + rng.normal(0.0, noise, rel.size)
+
+
+HAND_SCALE = 0.3
+CLOSED_GAP = 0.05
+LANDMARK_NOISE = 0.002
+
+
+def tap_frames(
+    rate_hz: float = 4,
+    seconds: float = 10,
+    fps: float = 30,
+    amp_start: float = 1.0,
+    amp_end: float = 0.7,
+    drop_every: int = 0,
+    fps_jitter: float = 0.0,
+    seed: int = 0,
+) -> list[TapFrame]:
+    """Thumb-index taps at rate_hz; amplitude (signal units) holds amp_start for the first
+    EDGE_WINDOW_S, ramps linearly, then holds amp_end for the last EDGE_WINDOW_S.
+    fps_jitter is the ± fraction of each frame interval; every drop_every-th frame has no hand."""
+    rng = np.random.default_rng(seed + 3)
+    n = round(seconds * fps)
+    dt = (1.0 / fps) * (1.0 + rng.uniform(-fps_jitter, fps_jitter, n))
+    rel = np.concatenate(([0.0], np.cumsum(dt[:-1])))
+    ramp = np.clip((rel - EDGE_WINDOW_S) / max(seconds - 2 * EDGE_WINDOW_S, 1e-9), 0.0, 1.0)
+    amp = amp_start + (amp_end - amp_start) * ramp
+    gap = CLOSED_GAP + amp * (1 - np.cos(2 * np.pi * rate_hz * rel)) / 2
+    frames = []
+    for i, (ti, g) in enumerate(zip(rel, gap, strict=True)):
+        if drop_every and i % drop_every == drop_every - 1:
+            frames.append(TapFrame(t=1_000.0 + float(ti), lm=None))
+            continue
+        jit = rng.normal(0.0, LANDMARK_NOISE, 8)
+        wrist = (0.5 + jit[0], 0.8 + jit[1])
+        mcp = (0.5 + jit[2], 0.8 - HAND_SCALE + jit[3])
+        thumb = (0.45 + jit[4], 0.4 + jit[5])
+        index = (0.45 + HAND_SCALE * float(g) + jit[6], 0.4 + jit[7])
+        frames.append(TapFrame(t=1_000.0 + float(ti), lm=(wrist, thumb, index, mcp)))
+    return frames
