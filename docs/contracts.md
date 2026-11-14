@@ -300,6 +300,7 @@ Response `SettingsModel`: the defaults merged with the stored values.
 Body `SettingsUpdate`: any subset of the `SettingsModel` fields.
 - Omitted fields keep their stored value.
 - Sending `"posture_band": null` explicitly clears the band.
+- `null` for any other field is the same as omitting it: the stored value is kept.
 - A bad time format gives 422 `validation_error`.
 
 Response: the full `SettingsModel` after the update.
