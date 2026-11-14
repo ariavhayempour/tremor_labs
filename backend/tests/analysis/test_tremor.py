@@ -8,6 +8,9 @@ from tremorlab.analysis.errors import AnalysisError
 from tremorlab.analysis.tremor import (
     BAND_HZ,
     MIN_SECONDS,
+    RMS_MIN_MS2,
+    SCORE_CEIL_MS2,
+    SCORE_FLOOR_MS2,
     analyze_tremor,
     strength_to_score,
     tremor_spectrum,
@@ -58,20 +61,47 @@ def test_gravity_and_slow_drift_do_not_leak_into_band() -> None:
 
 
 def test_weak_tremor_below_rms_floor_is_not_detected() -> None:
-    r = analyze_tremor(*sine_imu(5.0, 0.01, 30, noise=0.001))
-    assert r.strength_ms2 < 0.02 and not r.tremor_detected and r.peak_hz is None
+    r = analyze_tremor(*sine_imu(5.0, 0.1, 30, noise=0.001))
+    assert r.strength_ms2 < RMS_MIN_MS2 and not r.tremor_detected and r.peak_hz is None
 
 
 def test_score_mapping_endpoints() -> None:
-    assert strength_to_score(0.005) == 0
-    assert strength_to_score(2.0) == 100
+    assert strength_to_score(SCORE_FLOOR_MS2) == 0
+    assert strength_to_score(SCORE_CEIL_MS2) == 100
     assert strength_to_score(0.1) > strength_to_score(0.05)
+
+
+def test_score_is_fifty_points_per_decade() -> None:
+    assert strength_to_score(0.5) == pytest.approx(50.0)
+    assert strength_to_score(0.14) == pytest.approx(22.4, abs=0.1)
+
+
+def test_still_hand_level_scores_near_zero() -> None:
+    assert strength_to_score(0.057) < 5
 
 
 def test_score_clamps_out_of_range() -> None:
     assert strength_to_score(0.0) == 0
-    assert strength_to_score(0.001) == 0
-    assert strength_to_score(10.0) == 100
+    assert strength_to_score(0.01) == 0
+    assert strength_to_score(20.0) == 100
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_mild_tremor_just_above_gate_is_detected(seed: int) -> None:
+    r = analyze_tremor(*sine_imu(5.0, 0.22, 30, seed=seed))
+    assert r.tremor_detected and r.strength_ms2 >= RMS_MIN_MS2
+    assert r.peak_hz is not None and abs(r.peak_hz - 5.0) <= 0.25
+
+
+@pytest.mark.parametrize("seconds", [8.0, 4.5])
+def test_mild_tremor_detected_in_live_window(seconds: float) -> None:
+    r = analyze_tremor(*sine_imu(5.0, 0.22, seconds), trim=False)
+    assert r.tremor_detected
+
+
+def test_physiological_level_tremor_is_not_detected() -> None:
+    r = analyze_tremor(*sine_imu(9.5, 0.12, 30))
+    assert r.strength_ms2 < RMS_MIN_MS2 and not r.tremor_detected and r.peak_hz is None
 
 
 def test_short_recording_raises_insufficient() -> None:

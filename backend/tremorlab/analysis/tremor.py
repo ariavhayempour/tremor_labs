@@ -14,9 +14,9 @@ HP_CUTOFF_HZ = 2.0
 BAND_HZ = (3.0, 12.0)
 WELCH_WINDOW_S = 4.0
 PEAK_TO_MEDIAN_MIN = 6.0
-RMS_MIN_MS2 = 0.02
-SCORE_FLOOR_MS2 = 0.005
-SCORE_CEIL_MS2 = 2.0
+RMS_MIN_MS2 = 0.14
+SCORE_FLOOR_MS2 = 0.05
+SCORE_CEIL_MS2 = 5.0
 MIN_SECONDS = 4.0
 
 HP_ORDER = 4
@@ -40,7 +40,7 @@ class TremorResult:
 
 
 def strength_to_score(rms_ms2: float) -> float:
-    """clamp(100·log10(rms/0.005)/log10(2.0/0.005), 0, 100) for rms in m/s²."""
+    """rms m/s² → 0-100: log10 scale from SCORE_FLOOR_MS2 (0) to SCORE_CEIL_MS2 (100), clamped."""
     if not rms_ms2 > SCORE_FLOOR_MS2:
         return 0.0
     score = (
