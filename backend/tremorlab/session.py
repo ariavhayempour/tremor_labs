@@ -15,7 +15,7 @@ from numpy.typing import NDArray
 
 from tremorlab.analysis import Analyzers
 from tremorlab.analysis.errors import AnalysisError
-from tremorlab.analysis.posture import BAND_HALF_WIDTH_MM, analyze_posture
+from tremorlab.analysis.posture import BAND_HALF_WIDTH_MM, analyze_posture, apply_posture_gate
 from tremorlab.analysis.reach import ReachAttempt, ReachResult, analyze_reach
 from tremorlab.analysis.tap import MIN_TAPS, TapFrame, TapResult, analyze_taps
 from tremorlab.analysis.tremor import TremorResult, analyze_tremor
@@ -293,6 +293,8 @@ class TestSession:
             r = self.analyzers.tremor(t, acc, trim=False)
         except (AnalysisError, NotImplementedError):
             return
+        if rec.kind == "posture":
+            r = apply_posture_gate(r)
         self.broadcaster.publish(spectrum_msg(r.freqs, r.psd, r.peak_hz))
 
     def _store(

@@ -88,7 +88,10 @@ def _refine_peak(freqs: NDArray[np.float64], psd: NDArray[np.float64], k: int) -
 
 
 def _result_from_spectrum(
-    freqs: NDArray[np.float64], psd: NDArray[np.float64], valid_seconds: float
+    freqs: NDArray[np.float64],
+    psd: NDArray[np.float64],
+    valid_seconds: float,
+    rms_min: float = RMS_MIN_MS2,
 ) -> TremorResult:
     """Peak, band RMS (integrated PSD over BAND_HZ), detection and score from a summed PSD."""
     idx = np.flatnonzero((freqs >= BAND_HZ[0]) & (freqs <= BAND_HZ[1]))
@@ -96,7 +99,7 @@ def _result_from_spectrum(
     rms = math.sqrt(float(np.sum(psd[idx])) * df)
     k = int(idx[np.argmax(psd[idx])])
     clear_peak = float(psd[k]) >= PEAK_TO_MEDIAN_MIN * float(np.median(psd[idx]))
-    detected = clear_peak and rms >= RMS_MIN_MS2
+    detected = clear_peak and rms >= rms_min
     return TremorResult(
         peak_hz=_refine_peak(freqs, psd, k) if detected else None,
         strength_ms2=rms,

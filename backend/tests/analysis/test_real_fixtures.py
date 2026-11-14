@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
+from tremorlab.analysis.posture import analyze_posture, apply_posture_gate
 from tremorlab.analysis.tremor import TremorResult, analyze_tremor
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "hardware"
@@ -69,3 +70,38 @@ def test_real_metronome_live_windows_detected() -> None:
     assert long and all(_near_5hz(r, 0.5) for r in long)
     short = _live_windows(t, acc, 4.5)
     assert short and sum(_near_5hz(r, 0.5) for r in short) >= 0.9 * len(short)
+
+
+STILL_POSTURE = FIXTURES / "still_posture.npz"
+needs_still_posture = pytest.mark.skipif(
+    not STILL_POSTURE.exists(), reason="arm-extended still recording missing"
+)
+IN_BAND_MM = 200.0
+POSTURE_BAND = (170.0, 230.0)
+
+
+def _posture_full(t: Arr, acc: Arr) -> TremorResult:
+    """Posture analysis with the hand held in band for the whole recording."""
+    return analyze_posture(t, acc, t, np.full(t.shape, IN_BAND_MM), POSTURE_BAND)
+
+
+@needs_still_posture
+def test_real_still_posture_not_detected() -> None:
+    r = _posture_full(*_load(STILL_POSTURE))
+    assert not r.tremor_detected and r.peak_hz is None
+
+
+@needs_still_posture
+@pytest.mark.parametrize("seconds", [8.0, 4.5])
+def test_real_still_posture_live_windows_not_detected(seconds: float) -> None:
+    windows = [apply_posture_gate(r) for r in _live_windows(*_load(STILL_POSTURE), seconds)]
+    assert windows and not any(r.tremor_detected for r in windows)
+
+
+@needs_metronome
+def test_real_metronome_detected_through_posture_path() -> None:
+    r = _posture_full(*_load(METRONOME))
+    assert _near_5hz(r, 0.25)
+    t, acc = _load(METRONOME)
+    windows = [apply_posture_gate(r) for r in _live_windows(t, acc, 8.0)]
+    assert all(_near_5hz(r, 0.5) for r in windows)

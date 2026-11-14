@@ -180,7 +180,8 @@ usually larger than at rest. Record a posture still hand before trusting posture
 4. If the total is under `MIN_VALID_S`, raise `insufficient_valid_data`.
 5. Run `tremor_spectrum` on each run. Put each PSD on the longest run's frequency grid
    (`np.interp`), then average them weighted by run length.
-6. Compute peak, strength, detection and score from the averaged PSD, exactly as for rest.
+6. Compute peak, strength, detection and score from the averaged PSD, as for rest, except that
+   detection needs `strength_ms2 ≥ POSTURE_RMS_MIN_MS2` (0.22) instead of the rest gate (0.14).
 
 Posture applies **no** edge trim. The band gate already excludes the settling and button-press
 periods. A 30 s recording with 8 s out of band yields 22 s of valid data.
@@ -195,6 +196,37 @@ an absolute band from settings.
 | `MIN_VALID_S` | 20.0 | s | Least total in-band time |
 | `TOF_VALID_RANGE_MM` | (20.0, 1300.0) | mm | ToF readings outside this range are invalid |
 | `TOF_MATCH_MAX_S` | 0.2 | s | Farthest an IMU sample may be from a valid ToF reading |
+| `POSTURE_RMS_MIN_MS2` | 0.22 | m/s² | Band RMS needed to call a posture tremor (rest uses 0.14) |
+
+### Posture gate tuning on real data
+
+A held-out arm sways more than a hand resting on a thigh. The rest gate (`RMS_MIN_MS2` = 0.14)
+was tuned on a resting hand only, so a separate recording was made on 2026-11-14:
+`tests/fixtures/hardware/still_posture.npz`. It is 30 s at 101 Hz, with the arm extended
+unsupported at shoulder height, palm up, and the sensor lying flat (not gripped).
+
+| Still arm, held out | With the rest gate (0.14) | With `POSTURE_RMS_MIN_MS2` (0.22) |
+|---|---|---|
+| Full recording | not detected, but RMS 0.121 (margin 1.16×) | not detected (margin 1.8×) |
+| 8 s live windows | 0/44 detected; RMS up to 0.144 (above the gate; only the peak ratio held) | 0/44 |
+| 4.5 s live windows | **2/51 false detections** at 3.2 and 3.7 Hz; RMS up to 0.154 | 0/51 |
+
+- **The false peaks are slow arm sway at the bottom edge of the band (3–3.7 Hz),** not
+  physiological tremor (8–12 Hz).
+- **0.22 is 1.43× the largest still-arm window RMS (0.154),** in line with the rest gate's
+  margin. The metronome recording is still detected through the posture path: 5.13 Hz,
+  44/44 and 51/51 windows.
+- **Trade-off:** postural tremor below 0.22 m/s² band RMS reads "no clear tremor". Its strength
+  and score are still stored and charted.
+- **In the simulator,** a posture peak needs a `tremor_amp` of at least about 0.33 m/s² (the
+  default 0.3 m/s² gives band RMS 0.209).
+- **The live spectrum during a posture test** applies the same gate (`apply_posture_gate` on the
+  untrimmed window), so the Posture step never shows a peak that the final result wouldn't
+  report.
+- **Synthetic posture tests:**
+  - Tests of posture mechanics (gating, NaN handling, run averaging) use amplitude 0.5, which
+    sits clearly above the gate.
+  - `test_posture_sensitivity_matches_gate` pins detection to ±10% around the gate.
 
 ## Reach (`reach.py`)
 

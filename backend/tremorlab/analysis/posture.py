@@ -1,5 +1,7 @@
 """Posture tremor gated by hand height: only in-band ToF runs count."""
 
+import dataclasses
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -17,6 +19,8 @@ MIN_RUN_S = 4.0
 MIN_VALID_S = 20.0
 TOF_VALID_RANGE_MM = (20.0, 1300.0)
 TOF_MATCH_MAX_S = 0.2
+# A held-out arm sways more than a resting hand; see docs/analysis.md for the recordings.
+POSTURE_RMS_MIN_MS2 = 0.22
 
 
 def band_from_start(start_mm: float, half_width: float = BAND_HALF_WIDTH_MM) -> tuple[float, float]:
@@ -81,4 +85,11 @@ def analyze_posture(
     grid = spectra[int(np.argmax(weights))][0]
     stacked = np.vstack([np.interp(grid, f, p) for f, p, _ in spectra])
     psd = np.asarray(weights @ stacked / weights.sum(), dtype=np.float64)
-    return _result_from_spectrum(grid, psd, valid_seconds)
+    return _result_from_spectrum(grid, psd, valid_seconds, POSTURE_RMS_MIN_MS2)
+
+
+def apply_posture_gate(r: TremorResult) -> TremorResult:
+    """Re-gate a tremor result at POSTURE_RMS_MIN_MS2 (m/s²); strength and spectrum are kept."""
+    if not r.tremor_detected or r.strength_ms2 >= POSTURE_RMS_MIN_MS2:
+        return r
+    return dataclasses.replace(r, tremor_detected=False, peak_hz=None)

@@ -352,3 +352,12 @@ def test_listener_detached_after_stop(rig: Rig) -> None:
 def test_now_is_utc_from_clock(rig: Rig) -> None:
     assert rig.session.now().timestamp() == pytest.approx(DATA_T0)
     assert rig.session.now().utcoffset() is not None
+
+
+def test_tick_posture_spectrum_uses_posture_gate(rig: Rig) -> None:
+    # The fake reports 0.2 m/s², above the rest gate but below the posture gate.
+    rig.session.start(rig.check_id, "posture", "right")
+    rig.feed(sim_batches(10))
+    rig.session.tick()
+    [spec] = rig.messages("spectrum")
+    assert spec["peak_hz"] is None
