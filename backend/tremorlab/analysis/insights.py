@@ -2,7 +2,7 @@
 
 import math
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, tzinfo
 from statistics import fmean
@@ -13,8 +13,6 @@ RETURNS_MIN_COUNT = 3
 RETURNS_MIN_H = 1.0
 PROFILE_FIRST_DAYS = 7
 PROFILE_CURRENT_DAYS = 3
-POOR_SLEEP_MAX = 2
-HIGH_STRESS_MIN = 4
 
 REST = "rest"
 PROFILE_TEST_TYPES = ("rest", "posture", "reach", "tap")
@@ -27,10 +25,6 @@ class Obs:
 
     minutes_since_dose: float | None
     created_at: datetime
-    caffeine: bool | None
-    sleep_quality: int | None
-    stress: int | None
-    alcohol: bool | None
     test_type: str
     metric: float
 
@@ -40,14 +34,6 @@ class Bin:
     """start_h hours since dose; mean rest strength m/s²; count observations."""
 
     start_h: float
-    mean: float
-    count: int
-
-
-@dataclass(frozen=True)
-class FactorEffect:
-    factor: str
-    group: str
     mean: float
     count: int
 
@@ -111,41 +97,6 @@ def returns_after_h(
         ):
             return b.start_h
     return None
-
-
-_FACTORS: tuple[tuple[str, tuple[tuple[str, Callable[[Obs], bool]], ...]], ...] = (
-    ("caffeine", (("yes", lambda o: o.caffeine is True), ("no", lambda o: o.caffeine is False))),
-    (
-        "sleep",
-        (
-            ("poor", lambda o: o.sleep_quality is not None and o.sleep_quality <= POOR_SLEEP_MAX),
-            ("ok", lambda o: o.sleep_quality is not None and o.sleep_quality > POOR_SLEEP_MAX),
-        ),
-    ),
-    (
-        "stress",
-        (
-            ("high", lambda o: o.stress is not None and o.stress >= HIGH_STRESS_MIN),
-            ("low", lambda o: o.stress is not None and o.stress < HIGH_STRESS_MIN),
-        ),
-    ),
-    ("alcohol", (("yes", lambda o: o.alcohol is True), ("no", lambda o: o.alcohol is False))),
-)
-
-
-def factor_effects(obs: Sequence[Obs]) -> list[FactorEffect]:
-    """Rest strength split by caffeine yes/no, sleep poor/ok, stress high/low, alcohol yes/no.
-
-    Metric: rest strength_ms2 (m/s²). Unanswered factors are skipped; empty groups are omitted.
-    """
-    rest = _rest(obs)
-    out = []
-    for factor, groups in _FACTORS:
-        for group, member in groups:
-            values = [o.metric for o in rest if member(o)]
-            if values:
-                out.append(FactorEffect(factor, group, fmean(values), len(values)))
-    return out
 
 
 def profile(obs: Sequence[Obs], now: datetime) -> list[ProfileRow]:

@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from tests.api.fakes import FakeClock, QuietSource
 from tremorlab import seeding
 from tremorlab.analysis import insights
-from tremorlab.analysis.insights import Bin, DayPoint, FactorEffect, Obs, ProfileRow
+from tremorlab.analysis.insights import Bin, DayPoint, Obs, ProfileRow
 from tremorlab.config import Config
 from tremorlab.db import queries as q
 from tremorlab.db.models import Hand, ResultRow, TestStatus, TestType
@@ -56,19 +56,11 @@ def add_check(
     tests: Sequence[Spec] = (),
     *,
     minutes: float | None = 90.0,
-    caffeine: bool | None = True,
-    sleep: int | None = 2,
-    stress: int | None = 4,
-    alcohol: bool | None = False,
 ) -> int:
     check_id = q.insert_check(
         conn,
         created_at=at,
         minutes_since_dose=minutes,
-        caffeine=caffeine,
-        sleep_quality=sleep,
-        stress=stress,
-        alcohol=alcohol,
         notes=None,
         dose_id=None,
     )
@@ -83,13 +75,7 @@ def add_check(
 
 
 def obs(at: datetime, kind: str, metric: float, **ctx: Any) -> Obs:
-    defaults: dict[str, Any] = {
-        "minutes_since_dose": 90.0,
-        "caffeine": True,
-        "sleep_quality": 2,
-        "stress": 4,
-        "alcohol": False,
-    }
+    defaults: dict[str, Any] = {"minutes_since_dose": 90.0}
     return Obs(created_at=at.astimezone(UTC), test_type=kind, metric=metric, **defaults | ctx)
 
 
@@ -105,10 +91,6 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> Calls:
     def returns_after_h(bins: Sequence[Bin], median: float) -> float | None:
         c.record("returns_after_h", list(bins), median)
         return 2.5
-
-    def factor_effects(o: Sequence[Obs]) -> list[FactorEffect]:
-        c.record("factor_effects", list(o))
-        return [FactorEffect("caffeine", "yes", 0.2, 2), FactorEffect("caffeine", "no", 0.0, 0)]
 
     def profile(o: Sequence[Obs], now: datetime) -> list[ProfileRow]:
         c.record("profile", list(o), now)
@@ -126,7 +108,7 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> Calls:
         c.record("streak_days", list(dates), today)
         return 3
 
-    for fn in (dose_response, returns_after_h, factor_effects, profile, daily_timeline):
+    for fn in (dose_response, returns_after_h, profile, daily_timeline):
         monkeypatch.setattr(insights, fn.__name__, fn)
     monkeypatch.setattr(insights, "streak_days", streak_days)
     return c
@@ -152,7 +134,7 @@ def test_dose_response_passes_rest_strengths_in_window(client: TestClient, calls
         ],
     )
     later = NOW - timedelta(hours=2)
-    add_check(conn, later, [("rest", "left", "done", rest(0.4))], minutes=None, caffeine=None)
+    add_check(conn, later, [("rest", "left", "done", rest(0.4))], minutes=None)
     add_check(conn, NOW - timedelta(days=20), [("rest", "right", "done", rest(0.9))])
     dose_in = q.insert_dose(conn, NOW - timedelta(hours=3))
     q.insert_dose(conn, NOW - timedelta(days=20))
@@ -160,7 +142,7 @@ def test_dose_response_passes_rest_strengths_in_window(client: TestClient, calls
     body = get(client, "dose-response")
 
     assert calls.args["dose_response"] == [
-        ([obs(at, "rest", 0.2), obs(later, "rest", 0.4, minutes_since_dose=None, caffeine=None)],)
+        ([obs(at, "rest", 0.2), obs(later, "rest", 0.4, minutes_since_dose=None)],)
     ]
     ((bins, median),) = calls.args["returns_after_h"]
     assert median == pytest.approx(0.3) and len(bins) == 3
@@ -208,24 +190,9 @@ def test_dose_response_without_rest_data(client: TestClient, calls: Calls) -> No
 
 @pytest.mark.parametrize("days", [0, 366, "x"])
 def test_days_out_of_range_is_422(client: TestClient, days: object) -> None:
-    for path in ("dose-response", "factors", "profile", "summary"):
+    for path in ("dose-response", "profile", "summary"):
         r = client.get(f"/api/insights/{path}", params={"days": days})
         assert r.status_code == 422 and r.json()["error"] == "validation_error"
-
-
-def test_factors_pass_rest_strengths_and_omit_empty_groups(
-    client: TestClient, calls: Calls
-) -> None:
-    at = NOW - timedelta(days=2)
-    add_check(
-        conn_of(client),
-        at,
-        [("rest", "right", "done", rest(0.2)), ("posture", "right", "done", rest(0.1))],
-        sleep=4,
-    )
-    body = get(client, "factors")
-    assert calls.args["factor_effects"] == [([obs(at, "rest", 0.2, sleep_quality=4)],)]
-    assert body == [{"factor": "caffeine", "group": "yes", "mean": 0.2, "count": 2}]
 
 
 def test_profile_uses_card_metrics_in_card_order(client: TestClient, calls: Calls) -> None:
@@ -320,12 +287,6 @@ def test_seeded_dose_response_shows_wearing_off(seeded: TestClient) -> None:
     assert 2.0 <= body["returns_after_h"] <= 4.0
     assert all(b["count"] > 0 and 0.0 <= b["start_h"] < 6.0 for b in body["bins"])
     assert len(body["doses"]) >= 36
-
-
-@pytest.mark.integration
-def test_seeded_factors_show_caffeine_effect(seeded: TestClient) -> None:
-    by_group = {(f["factor"], f["group"]): f for f in get(seeded, "factors")}
-    assert by_group[("caffeine", "yes")]["mean"] > by_group[("caffeine", "no")]["mean"]
 
 
 @pytest.mark.integration

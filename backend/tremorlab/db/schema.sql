@@ -11,10 +11,6 @@ CREATE TABLE IF NOT EXISTS checks (
     id                  INTEGER PRIMARY KEY,
     created_at          TEXT NOT NULL,
     minutes_since_dose  REAL,
-    caffeine            INTEGER CHECK (caffeine IN (0, 1)),
-    sleep_quality       INTEGER CHECK (sleep_quality BETWEEN 1 AND 5),
-    stress              INTEGER CHECK (stress BETWEEN 1 AND 5),
-    alcohol             INTEGER CHECK (alcohol IN (0, 1)),
     notes               TEXT,
     dose_id             INTEGER REFERENCES doses(id)
 );

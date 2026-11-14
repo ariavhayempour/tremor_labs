@@ -22,10 +22,6 @@ class CheckRow:
     id: int
     created_at: datetime
     minutes_since_dose: float | None
-    caffeine: bool | None
-    sleep_quality: int | None
-    stress: int | None
-    alcohol: bool | None
     notes: str | None
     dose_id: int | None
 

@@ -39,10 +39,6 @@ class Rig:
             self.conn,
             created_at=self.session.now(),
             minutes_since_dose=None,
-            caffeine=None,
-            sleep_quality=None,
-            stress=None,
-            alcohol=None,
             notes=None,
             dose_id=None,
         )

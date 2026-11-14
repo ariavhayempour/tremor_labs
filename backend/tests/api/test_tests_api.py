@@ -53,7 +53,7 @@ def h(config: Config) -> Iterator[Harness]:
 def test_post_check_then_rest_flow_via_http(h: Harness) -> None:
     r = h.client.post(
         "/api/checks",
-        json={"medication": "hours_ago", "hours_ago": 2, "caffeine": True, "sleep_quality": 4},
+        json={"medication": "hours_ago", "hours_ago": 2, "notes": "after lunch"},
     )
     assert r.status_code == 201
     assert r.json() == {"check_id": r.json()["check_id"], "minutes_since_dose": 120.0}
@@ -75,7 +75,7 @@ def test_post_check_then_rest_flow_via_http(h: Harness) -> None:
 
     conn = h.client.app.state.conn  # type: ignore[attr-defined]
     check = q.get_check(conn, check_id)
-    assert check is not None and check.caffeine is True and check.sleep_quality == 4
+    assert check is not None and check.notes == "after lunch"
     assert check.created_at.timestamp() == pytest.approx(DATA_T0)
     assert len(q.raw_for_test(conn, test_id)) == 640
 
@@ -148,10 +148,6 @@ def test_startup_marks_leftover_recordings_interrupted(config: Config) -> None:
         conn,
         created_at=EARLIER,
         minutes_since_dose=None,
-        caffeine=None,
-        sleep_quality=None,
-        stress=None,
-        alcohol=None,
         notes=None,
         dose_id=None,
     )

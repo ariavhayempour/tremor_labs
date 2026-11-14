@@ -353,12 +353,12 @@ ignored. It returns `None` ("building your baseline") when:
 ## Insights (`insights.py`)
 
 Pure functions over `Obs` rows. The endpoint layer builds the `Obs` from the DB: one per
-**done** test, with the check's context (`minutes_since_dose`, `created_at`, caffeine, sleep,
-stress, alcohol). `Obs.metric` depends on what the function reads:
+**done** test, with the check's context (`minutes_since_dose`, `created_at`). `Obs.metric`
+depends on what the function reads:
 
 | Function | Reads | `metric` |
 |---|---|---|
-| `dose_response`, `factor_effects`, `daily_timeline` | `rest` only | `strength_ms2` (m/s²) |
+| `dose_response`, `daily_timeline` | `rest` only | `strength_ms2` (m/s²) |
 | `profile` | rest, posture, reach, tap | the Results-card metric: `strength_score` (rest, posture), `smoothness` mm (reach), `taps_per_sec` (tap) |
 
 A rest test therefore appears with `strength_ms2` in the first list and with `strength_score`
@@ -370,9 +370,6 @@ in the profile list. Non-finite metrics are ignored everywhere.
 - **`returns_after_h(bins, overall_median, min_count)`:** the `start_h` of the first bin (by
   `start_h`) with `start_h ≥ RETURNS_MIN_H`, `count ≥ min_count` and `mean > overall_median`
   (strictly), else `None`. The caller passes the median of the observations it binned.
-- **`factor_effects(obs)`:** mean rest strength per group, in the order caffeine yes/no,
-  sleep poor (≤ `POOR_SLEEP_MAX`) / ok, stress high (≥ `HIGH_STRESS_MIN`) / low, alcohol yes/no.
-  An unanswered factor (`None`) puts the observation in neither group. Empty groups are omitted.
 - **`profile(obs, now)`:** always four rows (rest, posture, reach, tap). The first week is
   `[first, first + PROFILE_FIRST_DAYS)` where `first` is the earliest observation at or before
   `now`. Current is `(now − PROFILE_CURRENT_DAYS, now]`. Observations after `now` are ignored.
@@ -393,8 +390,13 @@ in the profile list. Non-finite metrics are ignored everywhere.
 | `RETURNS_MIN_H` | 1.0 | h | Earliest bin that can mark the return |
 | `PROFILE_FIRST_DAYS` | 7 | days | First-week window from the first observation |
 | `PROFILE_CURRENT_DAYS` | 3 | days | Current window ending at `now` |
-| `POOR_SLEEP_MAX` | 2 | 1–5 scale | Sleep at or below this is "poor" |
-| `HIGH_STRESS_MIN` | 4 | 1–5 scale | Stress at or above this is "high" |
+
+**No lifestyle factors.** Caffeine, sleep, stress and alcohol were removed from the product (check-in,
+storage, insights and report). Their effects on tremor are small (about 10–20%), self-reported, and
+confounded by dose timing. With about 50 checks over two weeks, the between-day spread in when checks
+fall relative to doses was larger than the modeled effects: seeded data with a +10% poor-sleep effect
+read 8% *lower*, and stress, which had no modeled effect, read 30% higher. The insights that remain
+(dose-response, returns-after, profile, daily timeline, baselines) all report their sample counts.
 
 ## Demo seeder model (`seeding.py`)
 
@@ -410,10 +412,7 @@ from local wall times, so doses stay at 08:00/13:00/18:00 local across a DST cha
   (checks before the first dose of the series have neither). Real check-ins cap the answer at
   4 h, the seeder does not, so checks before 08:00 sit about 14 h after the last dose and fall
   outside the dose-response bins.
-- **Daily factors:** caffeine on exactly `round(0.5·days)` random days, poor sleep (1–2) on
-  `round(0.3·days)`, alcohol on `round(0.2·days)`; the others sleep 3–5. Stress is uniform 1–5.
-  Exact counts instead of coin flips keep every factor group populated for the demo.
-- **Rest strength (m/s²):** `clean(h) × 1.2 (caffeine) × 1.1 (sleep ≤ 2) × lognormal(0, 0.12)`.
+- **Rest strength (m/s²):** `clean(h) × lognormal(0, 0.12)`.
   `clean(h) = 0.06 + 0.34·sigmoid((h − 3)/0.5)` for `h ≥ 1`. For `h < 1` it falls linearly from
   the pre-dose value `clean(interval since the previous dose)` to 0.06. Before any dose it is
   0.40.
@@ -428,16 +427,13 @@ from local wall times, so doses stay at 08:00/13:00/18:00 local across a DST cha
 - Every check has five tests, in order: rest, posture, reach (tested hand right), tap left,
   tap right. `details` is `{}`, and there are no raw samples.
 
-**Seed 42, 14 days** (America/Chicago, ending 2026-11-14): 50 checks, 42 doses. Rest strength by
-bin (m/s², count): 0.0 h 0.378 (5), 0.5 h 0.129 (7), 1.0 h 0.069 (7), 1.5 h 0.098 (5),
-2.0 h 0.130 (5), 2.5 h 0.200 (5), 3.0 h 0.344 (2), 3.5 h 0.390 (2), 4.0 h 0.389 (4),
-4.5 h 0.416 (4). The median is 0.161, so `returns_after_h` is 2.5. Caffeine days read 1.19×
-(unmatched means 0.263 vs 0.221). Rest is detected in 31 of 50 checks and posture in 17.
-
-Over 200 seeds, `returns_after_h` is always 2.0–4.0 (mostly 2.5 or 3.0). The caffeine ratio
-within matched 0.5 h bins is 1.09–1.38 (5th–95th percentile), so the test's [1.12, 1.30] holds
-for seed 42 but not for every seed. The 1.1× sleep effect is smaller than the spread from check
-timing: with seed 42 the unmatched poor-sleep mean (0.227, n=13) is below ok (0.246, n=37).
+**Seed 42, 14 days** (America/Chicago, ending 2026-11-14): 55 checks, 42 doses. Rest strength by
+bin (m/s², count): 0.0 h 0.326 (7), 0.5 h 0.100 (3), 1.0 h 0.068 (6), 1.5 h 0.087 (5),
+2.0 h 0.123 (6), 2.5 h 0.200 (4), 3.0 h 0.280 (8), 3.5 h 0.316 (4), 4.0 h 0.379 (7),
+4.5 h 0.433 (3). The median is 0.241, so `returns_after_h` is 3.0. Rest is detected in 36 of
+55 checks and posture in 20. Over 200 seeds, `returns_after_h` is 2.0–4.0 in 199. `make seed`
+passes yesterday as `end`, so no seeded check is in the future; the writer adds one replayable
+check (real raw samples from the simulator) about 10 minutes before now.
 
 ## How to tune (against a real still hand)
 

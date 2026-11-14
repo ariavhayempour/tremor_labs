@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from types import ModuleType
+from typing import cast
 
 import pytest
 
@@ -30,9 +31,10 @@ def load_seed_script() -> ModuleType:
     return mod
 
 
-def seed_tests(at: datetime, strength: float) -> list[SeedTest]:
+def seed_tests(at: datetime, strength: float, *, bad_hand: bool = False) -> list[SeedTest]:
     def t(kind: TestType, hand: Hand, minute: int, result: ResultRow) -> SeedTest:
-        return SeedTest(kind, hand, at + timedelta(minutes=minute), result)
+        bad = cast(Hand, "middle")  # violates the tests.hand CHECK constraint
+        return SeedTest(kind, bad if bad_hand else hand, at + timedelta(minutes=minute), result)
 
     tremor = ResultRow(
         peak_hz=5.0, strength_ms2=strength, strength_score=40.0, tremor_detected=True
@@ -46,7 +48,7 @@ def seed_tests(at: datetime, strength: float) -> list[SeedTest]:
     ]
 
 
-def small_data(*, bad_sleep: bool = False) -> SeedData:
+def small_data(*, bad_row: bool = False) -> SeedData:
     """Two days, two doses a day; the first check precedes every dose."""
     doses = [
         SeedDose(DAY0 + timedelta(hours=1)),
@@ -64,12 +66,8 @@ def small_data(*, bad_sleep: bool = False) -> SeedData:
             SeedCheck(
                 created_at=at,
                 minutes_since_dose=minutes,
-                caffeine=i % 2 == 0,
-                sleep_quality=9 if bad_sleep and i == 3 else 2 + i,
-                stress=1 + i,
-                alcohol=i == 3,
                 dose_index=dose_index,
-                tests=seed_tests(at, 0.1 + 0.05 * i),
+                tests=seed_tests(at, 0.1 + 0.05 * i, bad_hand=bad_row and i == 3),
             )
         )
     return SeedData(doses=doses, checks=checks)
@@ -103,13 +101,7 @@ def test_checks_round_trip(written: sqlite3.Connection) -> None:
     rows = seeded_checks(written)
     assert len(rows) == len(data.checks)
     for row, c in zip(rows, data.checks, strict=True):
-        assert (row.created_at, row.caffeine, row.sleep_quality, row.stress, row.alcohol) == (
-            c.created_at,
-            c.caffeine,
-            c.sleep_quality,
-            c.stress,
-            c.alcohol,
-        )
+        assert row.created_at == c.created_at
         assert row.minutes_since_dose == pytest.approx(c.minutes_since_dose)
         assert row.notes is None
 
@@ -137,7 +129,7 @@ def test_tests_and_results_round_trip(written: sqlite3.Connection) -> None:
 def test_bad_row_rolls_back_everything(tmp_path: Path) -> None:
     conn = connect(tmp_path / "x.db")
     with pytest.raises(sqlite3.IntegrityError):
-        write(conn, small_data(bad_sleep=True), replay_at=REPLAY_AT)
+        write(conn, small_data(bad_row=True), replay_at=REPLAY_AT)
     assert q.list_doses(conn, None, None) == []
     assert q.list_checks(conn, None, None) == []
     q.insert_dose(conn, DAY0)  # the connection still commits normally afterwards
@@ -146,20 +138,12 @@ def test_bad_row_rolls_back_everything(tmp_path: Path) -> None:
 
 
 def test_replay_check_is_newest_with_dose_fields(written: sqlite3.Connection) -> None:
-    data = small_data()
     row = replay_check(written)
-    last = data.checks[-1]
     assert row.created_at == REPLAY_AT
     dose = q.latest_dose_at_or_before(written, row.created_at)
     assert dose is not None and row.dose_id == dose.id
     assert row.minutes_since_dose == pytest.approx(
         (row.created_at - dose.taken_at).total_seconds() / 60
-    )
-    assert (row.caffeine, row.sleep_quality, row.stress, row.alcohol) == (
-        last.caffeine,
-        last.sleep_quality,
-        last.stress,
-        last.alcohol,
     )
 
 
@@ -242,7 +226,6 @@ def test_without_checks_replay_check_uses_latest_dose_before_it() -> None:
     (row,) = q.list_checks(conn, None, None)
     assert row.dose_id == q.list_doses(conn, None, None)[2].id
     assert row.minutes_since_dose == pytest.approx(60.0)
-    assert (row.caffeine, row.sleep_quality, row.stress, row.alcohol) == (None, None, None, None)
 
 
 def test_replay_check_before_any_dose_has_null_dose_fields() -> None:

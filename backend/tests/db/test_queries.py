@@ -15,10 +15,6 @@ def add_check(conn: sqlite3.Connection, at: datetime = T0, **kw: object) -> int:
     fields: dict[str, object] = {
         "created_at": at,
         "minutes_since_dose": None,
-        "caffeine": None,
-        "sleep_quality": None,
-        "stress": None,
-        "alcohol": None,
         "notes": None,
         "dose_id": None,
     }
@@ -49,15 +45,11 @@ def test_check_roundtrip(mem_conn: sqlite3.Connection) -> None:
     cid = add_check(
         mem_conn,
         minutes_since_dose=120.0,
-        caffeine=True,
-        sleep_quality=4,
-        stress=2,
-        alcohol=False,
         notes="ok",
         dose_id=dose,
     )
     row = q.get_check(mem_conn, cid)
-    assert row == CheckRow(cid, T0, 120.0, True, 4, 2, False, "ok", dose)
+    assert row == CheckRow(cid, T0, 120.0, "ok", dose)
     assert row.created_at.tzinfo is not None and row.created_at.utcoffset() == timedelta(0)
     assert q.get_check(mem_conn, 999) is None
 
@@ -65,7 +57,7 @@ def test_check_roundtrip(mem_conn: sqlite3.Connection) -> None:
 def test_check_nullable_fields_roundtrip(mem_conn: sqlite3.Connection) -> None:
     cid = add_check(mem_conn)
     row = q.get_check(mem_conn, cid)
-    assert row is not None and row.caffeine is None and row.alcohol is None
+    assert row is not None and row.notes is None and row.dose_id is None
 
 
 def test_non_utc_input_is_stored_as_utc(mem_conn: sqlite3.Connection) -> None:
@@ -265,10 +257,6 @@ def test_latest_replayable_tests_needs_all_types_with_raw(mem_conn: sqlite3.Conn
             mem_conn,
             created_at=at,
             minutes_since_dose=None,
-            caffeine=None,
-            sleep_quality=None,
-            stress=None,
-            alcohol=None,
             notes=None,
             dose_id=None,
         )

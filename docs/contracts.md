@@ -21,6 +21,8 @@ The single source of truth for every interface between the frontend, the backend
   ```
   `message` is friendly text, but the frontend shows its own copy keyed by `error`.
 
+- **No lifestyle factors.** Caffeine, sleep, stress and alcohol aren't collected or reported. Their effects on tremor are small, self-reported and confounded by dose timing, so they can't be shown reliably at this data volume. The check-in rejects those fields with 422, and there's no factors insight.
+
 ### Error codes (`ErrorOut.error`)
 
 | Code | Status | When |
@@ -112,17 +114,12 @@ Body `CheckInRequest`:
 {
   "medication": "hours_ago",
   "hours_ago": 2,
-  "caffeine": true,
-  "sleep_quality": 4,
-  "stress": 2,
-  "alcohol": false,
   "notes": null
 }
 ```
 - `medication` is required: `"now" | "hours_ago" | "not_yet"`.
 - Everything else is optional and nullable.
   - `hours_ago`: 0–24, used only with `"hours_ago"`. The UI offers 0.5, 1, 2, 3 and 4 (shown as "4 h+").
-  - `sleep_quality`, `stress`: integers 1–5.
   - `notes`: up to 2000 characters.
 - **Dose logging:**
   - `now` or `hours_ago` logs a dose at `now − hours_ago`, unless one already exists within ±30 min of that time. `minutes_since_dose` is measured from that dose.
@@ -147,10 +144,6 @@ Response: `CheckOut[]`, newest first.
   "id": 12,
   "created_at": "2026-11-14T15:04:05Z",
   "minutes_since_dose": 120.0,
-  "caffeine": true,
-  "sleep_quality": 4,
-  "stress": 2,
-  "alcohol": false,
   "notes": null,
   "dose_id": 7,
   "tests": [
@@ -243,7 +236,7 @@ Query: `from`, `to` (ISO-8601, optional). Response `DoseOut[]`, oldest first:
 
 ### `GET /api/insights/dose-response`
 
-Query: `days` (1–365, default 14). The window is the last `days` days. Response `DoseResponseOut`:
+Query: `days` (1–365, default 14). The window is the last `days` **local calendar days**, including today (from local midnight `days − 1` days ago until now). All `/api/insights/*` endpoints and `/api/report` use it. Response `DoseResponseOut`:
 ```json
 {
   "bins": [{ "start_h": 0.0, "mean": 0.071, "count": 6 }, { "start_h": 0.5, "mean": 0.065, "count": 8 }],
@@ -253,23 +246,6 @@ Query: `days` (1–365, default 14). The window is the last `days` days. Respons
 ```
 - `bins`: rest-test `strength_ms2` (m/s²), binned by hours since dose. Bins are 0.5 h wide, cover 0–6 h, and empty bins are omitted. `start_h` is the bin's lower edge in hours.
 - `returns_after_h`: the first bin at ≥ 1 h whose mean exceeds the overall median, needing at least 3 samples, or `null`.
-
-### `GET /api/insights/factors`
-
-Query: `days`. Response `FactorEffect[]`, the mean rest `strength_ms2` per group:
-```json
-[
-  { "factor": "caffeine", "group": "yes", "mean": 0.21, "count": 21 },
-  { "factor": "caffeine", "group": "no", "mean": 0.17, "count": 23 }
-]
-```
-Factors and groups:
-- `caffeine`: `yes` / `no`
-- `sleep`: `poor` (≤ 2) / `ok` (≥ 3)
-- `stress`: `high` (≥ 4) / `low` (≤ 3)
-- `alcohol`: `yes` / `no`
-
-Groups with no observations are omitted.
 
 ### `GET /api/insights/profile`
 
@@ -292,7 +268,7 @@ Query: `days`. Response `InsightsSummary`:
   "daily": [{ "date": "2026-11-14", "mean_rest": 0.18, "count": 4 }]
 }
 ```
-- `streak_days`: consecutive local calendar days, ending today, with at least one check.
+- `streak_days`: consecutive local calendar days with at least one completed check, ending today (or yesterday, if there's no check yet today). It counts back through all history and isn't limited by `days`.
 - `daily`: one entry per local day in the window, oldest first. `mean_rest` is the mean rest `strength_ms2`, or `null` on days with no rest result.
 
 ### `GET /api/report`
@@ -304,7 +280,6 @@ Query: `days` (default 14). Response `ReportOut`, which reuses the insight shape
   "checks_completed": 47,
   "dose_response": [{ "start_h": 0.0, "mean": 0.071, "count": 6 }],
   "returns_after_h": 3.0,
-  "factors": [{ "factor": "caffeine", "group": "yes", "mean": 0.21, "count": 21 }],
   "profile": [{ "test_type": "rest", "first_week": 38.2, "first_n": 24, "current": 41.0, "current_n": 10 }],
   "daily": [{ "date": "2026-11-14", "mean_rest": 0.18, "count": 4 }],
   "generated_at": "2026-11-14T15:00:00Z"

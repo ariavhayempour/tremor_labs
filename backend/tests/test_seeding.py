@@ -123,20 +123,6 @@ def test_every_check_has_all_tests_in_order(data: SeedData) -> None:
         assert all(t.result.details == {} for t in c.tests)
 
 
-def test_daily_factors_are_constant_within_a_day(data: SeedData) -> None:
-    per_day: dict[date, set[tuple[object, ...]]] = defaultdict(set)
-    for c in data.checks:
-        per_day[c.created_at.astimezone(TZ).date()].add(
-            (c.caffeine, c.sleep_quality, c.stress, c.alcohol)
-        )
-    assert all(len(v) == 1 for v in per_day.values())
-    factors = [next(iter(v)) for v in per_day.values()]
-    assert {f[0] for f in factors} == {True, False}
-    assert {f[3] for f in factors} == {True, False}
-    assert all(1 <= int(str(f[1])) <= 5 and 1 <= int(str(f[2])) <= 5 for f in factors)
-    assert any(int(str(f[1])) <= 2 for f in factors) and any(int(str(f[1])) >= 3 for f in factors)
-
-
 def test_tremor_fields_follow_the_analysis_rules(data: SeedData) -> None:
     for c in data.checks:
         for t in c.tests[:2]:
@@ -178,22 +164,6 @@ def test_wearing_off_pattern(data: SeedData) -> None:
     early = [_rest(c) for c in data.checks if _in(c, 0.5, 1.5)]
     assert len(late) >= 5 and len(early) >= 5
     assert mean(late) > 2 * mean(early)
-
-
-def test_caffeine_effect(data: SeedData) -> None:
-    bins: dict[int, dict[bool, list[float]]] = defaultdict(lambda: {True: [], False: []})
-    for c in data.checks:
-        h = _hours(c)
-        if h is None or h >= 6.0 or c.caffeine is None:
-            continue
-        bins[int(h // 0.5)][c.caffeine].append(_rest(c))
-    weighted = [
-        (min(len(g[True]), len(g[False])), mean(g[True]) / mean(g[False]))
-        for g in bins.values()
-        if g[True] and g[False]
-    ]
-    ratio = sum(w * r for w, r in weighted) / sum(w for w, _ in weighted)
-    assert 1.12 <= ratio <= 1.30
 
 
 def test_peak_hz_range(data: SeedData) -> None:

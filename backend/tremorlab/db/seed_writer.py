@@ -72,10 +72,6 @@ def _write_check(conn: sqlite3.Connection, c: SeedCheck, dose_ids: Sequence[int]
         conn,
         created_at=c.created_at,
         minutes_since_dose=c.minutes_since_dose,
-        caffeine=c.caffeine,
-        sleep_quality=c.sleep_quality,
-        stress=c.stress,
-        alcohol=c.alcohol,
         notes=None,
         dose_id=None if c.dose_index is None else dose_ids[c.dose_index],
     )
@@ -108,15 +104,10 @@ def write_replay_check(
     minutes = None
     if dose_i is not None:
         minutes = (created_at - data.doses[dose_i].taken_at) / timedelta(minutes=1)
-    last = max(data.checks, key=lambda c: c.created_at, default=None)
     check_id = queries.insert_check(
         conn,
         created_at=created_at,
         minutes_since_dose=minutes,
-        caffeine=None if last is None else last.caffeine,
-        sleep_quality=None if last is None else last.sleep_quality,
-        stress=None if last is None else last.stress,
-        alcohol=None if last is None else last.alcohol,
         notes=None,
         dose_id=None if dose_i is None else dose_ids[dose_i],
     )

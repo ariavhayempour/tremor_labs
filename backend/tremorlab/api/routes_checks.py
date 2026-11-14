@@ -40,10 +40,6 @@ async def create_check(request: Request, body: CheckInRequest) -> CheckCreated:
         session.conn,
         created_at=now,
         minutes_since_dose=minutes,
-        caffeine=body.caffeine,
-        sleep_quality=body.sleep_quality,
-        stress=body.stress,
-        alcohol=body.alcohol,
         notes=body.notes,
         dose_id=dose_id,
     )

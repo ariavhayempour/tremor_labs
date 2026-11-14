@@ -35,10 +35,6 @@ def new_check(conn: sqlite3.Connection, at: datetime = T) -> int:
         conn,
         created_at=at,
         minutes_since_dose=None,
-        caffeine=None,
-        sleep_quality=None,
-        stress=None,
-        alcohol=None,
         notes=None,
         dose_id=None,
     )

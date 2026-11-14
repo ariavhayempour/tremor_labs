@@ -253,7 +253,7 @@ def test_full_check_end_to_end(config: Config) -> None:
     clock = FakeClock()
     with TestClient(create_app(config, source=QuietSource(), clock=clock)) as client:
         h = Harness(client, clock)
-        r = h.client.post("/api/checks", json={"medication": "now", "caffeine": False})
+        r = h.client.post("/api/checks", json={"medication": "now"})
         check_id = r.json()["check_id"]
         ids = [run_rest(h, check_id)]
         posture = start(h, check_id, "posture")

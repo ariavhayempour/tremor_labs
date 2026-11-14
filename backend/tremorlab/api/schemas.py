@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from tremorlab.db.models import FailReason, Hand, TestStatus, TestType
 from tremorlab.sources.base import LedCommand
 
-Score1to5 = Annotated[int, Field(ge=1, le=5)]
 HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
@@ -58,10 +57,6 @@ class SimUpdateRequest(Model):
 class CheckInRequest(Model):
     medication: Literal["now", "hours_ago", "not_yet"]
     hours_ago: float | None = Field(default=None, ge=0, le=24)
-    caffeine: bool | None = None
-    sleep_quality: Score1to5 | None = None
-    stress: Score1to5 | None = None
-    alcohol: bool | None = None
     notes: str | None = Field(default=None, max_length=2000)
 
 
@@ -131,10 +126,6 @@ class CheckOut(Model):
     id: int
     created_at: datetime
     minutes_since_dose: float | None
-    caffeine: bool | None
-    sleep_quality: int | None
-    stress: int | None
-    alcohol: bool | None
     notes: str | None
     dose_id: int | None
     tests: list[TestOut]
@@ -173,13 +164,6 @@ class DoseResponseOut(Model):
     doses: list[DoseOut]
 
 
-class FactorEffect(Model):
-    factor: Literal["caffeine", "sleep", "stress", "alcohol"]
-    group: str
-    mean: float
-    count: int
-
-
 class ProfileRow(Model):
     test_type: TestType
     first_week: float | None
@@ -211,7 +195,6 @@ class ReportOut(Model):
     checks_completed: int
     dose_response: list[Bin]
     returns_after_h: float | None
-    factors: list[FactorEffect]
     profile: list[ProfileRow]
     daily: list[DayPoint]
     generated_at: datetime

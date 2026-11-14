@@ -19,9 +19,7 @@ from tremorlab.db.models import (
 
 DOSE_MATCH_MINUTES = 30.0
 
-_CHECK_COLS = (
-    "id, created_at, minutes_since_dose, caffeine, sleep_quality, stress, alcohol, notes, dose_id"
-)
+_CHECK_COLS = "id, created_at, minutes_since_dose, notes, dose_id"
 _TEST_COLS = "id, check_id, type, hand, started_at, ended_at, status, fail_reason, markers_json"
 _RESULT_FIELDS = (
     "peak_hz",
@@ -86,10 +84,6 @@ def _check_row(r: sqlite3.Row) -> CheckRow:
         id=r["id"],
         created_at=_dt(r["created_at"]),
         minutes_since_dose=r["minutes_since_dose"],
-        caffeine=_opt_bool(r["caffeine"]),
-        sleep_quality=r["sleep_quality"],
-        stress=r["stress"],
-        alcohol=_opt_bool(r["alcohol"]),
         notes=r["notes"],
         dose_id=r["dose_id"],
     )
@@ -132,24 +126,15 @@ def insert_check(
     *,
     created_at: datetime,
     minutes_since_dose: float | None,
-    caffeine: bool | None,
-    sleep_quality: int | None,
-    stress: int | None,
-    alcohol: bool | None,
     notes: str | None,
     dose_id: int | None,
 ) -> int:
     return _insert(
         conn,
-        "INSERT INTO checks (created_at, minutes_since_dose, caffeine, sleep_quality, stress,"
-        " alcohol, notes, dose_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO checks (created_at, minutes_since_dose, notes, dose_id) VALUES (?, ?, ?, ?)",
         (
             _iso(created_at),
             minutes_since_dose,
-            _db_bool(caffeine),
-            sleep_quality,
-            stress,
-            _db_bool(alcohol),
             notes,
             dose_id,
         ),

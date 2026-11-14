@@ -57,7 +57,7 @@ def test_schema_rejects_bad_test_status(mem_conn: sqlite3.Connection) -> None:
 
 
 def test_contracts_doc_lists_endpoints() -> None:
-    assert len(contract_endpoints()) >= 20
+    assert len(contract_endpoints()) >= 15  # guards the heading parser, not the API size
 
 
 def test_every_router_registered(client: TestClient) -> None:
@@ -103,12 +103,10 @@ def test_sim_routes_only_mounted_for_sim(tmp_path: Path) -> None:
             [
                 "Obs",
                 "Bin",
-                "FactorEffect",
                 "ProfileRow",
                 "DayPoint",
                 "dose_response",
                 "returns_after_h",
-                "factor_effects",
                 "profile",
                 "daily_timeline",
                 "streak_days",

@@ -82,10 +82,6 @@ def to_obs(c: CheckRow, test_type: TestType, metric: float) -> insights.Obs:
     return insights.Obs(
         minutes_since_dose=c.minutes_since_dose,
         created_at=c.created_at,
-        caffeine=c.caffeine,
-        sleep_quality=c.sleep_quality,
-        stress=c.stress,
-        alcohol=c.alcohol,
         test_type=test_type,
         metric=metric,
     )
@@ -159,15 +155,6 @@ async def dose_response(request: Request, days: int = DAYS) -> schemas.DoseRespo
             for d in queries.list_doses(conn, w.start, w.now)
         ],
     )
-
-
-@router.get("/factors")
-async def factors(request: Request, days: int = DAYS) -> list[schemas.FactorEffect]:
-    w = window(request, days)
-    effects = insights.factor_effects(rest_strength_obs(load(_conn(request), w)))
-    return [
-        schemas.FactorEffect.model_validate(e, from_attributes=True) for e in effects if e.count
-    ]
 
 
 @router.get("/profile")

@@ -7,12 +7,10 @@ import pytest
 from tremorlab.analysis.insights import (
     Bin,
     DayPoint,
-    FactorEffect,
     Obs,
     ProfileRow,
     daily_timeline,
     dose_response,
-    factor_effects,
     profile,
     returns_after_h,
     streak_days,
@@ -28,18 +26,10 @@ def _obs(
     minutes: float | None = 60.0,
     test_type: str = "rest",
     at: datetime = T0,
-    caffeine: bool | None = None,
-    sleep: int | None = None,
-    stress: int | None = None,
-    alcohol: bool | None = None,
 ) -> Obs:
     return Obs(
         minutes_since_dose=minutes,
         created_at=at,
-        caffeine=caffeine,
-        sleep_quality=sleep,
-        stress=stress,
-        alcohol=alcohol,
         test_type=test_type,
         metric=metric,
     )
@@ -89,29 +79,6 @@ def test_returns_after_requires_min_count() -> None:
 def test_returns_after_uses_bin_order_not_list_order() -> None:
     bins = [Bin(3.0, 0.4, 3), Bin(2.0, 0.4, 3)]
     assert returns_after_h(bins, overall_median=0.2) == 2.0
-
-
-def test_factor_groups_and_counts() -> None:
-    obs = [
-        _obs(0.30, caffeine=True, sleep=1, stress=5, alcohol=False),
-        _obs(0.20, caffeine=True, sleep=2, stress=4, alcohol=False),
-        _obs(0.10, caffeine=False, sleep=3, stress=3, alcohol=False),
-        _obs(0.40, caffeine=None, sleep=None, stress=None, alcohol=None),
-        _obs(9.00, test_type="tap", caffeine=True, sleep=1, stress=5, alcohol=True),
-    ]
-    effects = factor_effects(obs)
-    assert [(e.factor, e.group, e.count) for e in effects] == [
-        ("caffeine", "yes", 2),
-        ("caffeine", "no", 1),
-        ("sleep", "poor", 2),
-        ("sleep", "ok", 1),
-        ("stress", "high", 2),
-        ("stress", "low", 1),
-        ("alcohol", "no", 3),
-    ]
-    assert effects[0].mean == pytest.approx(0.25)
-    assert all(isinstance(e, FactorEffect) for e in effects)
-    assert factor_effects([]) == []
 
 
 def test_profile_windows() -> None:
@@ -193,10 +160,6 @@ def _rest_obs(data: SeedData) -> list[Obs]:
                     Obs(
                         minutes_since_dose=c.minutes_since_dose,
                         created_at=c.created_at,
-                        caffeine=c.caffeine,
-                        sleep_quality=c.sleep_quality,
-                        stress=c.stress,
-                        alcohol=c.alcohol,
                         test_type="rest",
                         metric=t.result.strength_ms2,
                     )
@@ -216,5 +179,3 @@ def test_dose_response_on_seeded_data_shows_rise() -> None:
     early = [b.mean for b in bins if 1.0 <= b.start_h < 2.0]
     late = [b.mean for b in bins if 3.5 <= b.start_h < 5.0]
     assert max(early) < min(late)
-    caffeine = {e.group: e.mean for e in factor_effects(obs) if e.factor == "caffeine"}
-    assert caffeine["yes"] > caffeine["no"]

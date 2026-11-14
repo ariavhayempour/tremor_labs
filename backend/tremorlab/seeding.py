@@ -8,7 +8,6 @@ from datetime import UTC, date, datetime, timedelta, tzinfo
 
 import numpy as np
 
-from tremorlab.analysis.insights import POOR_SLEEP_MAX
 from tremorlab.analysis.posture import POSTURE_RMS_MIN_MS2
 from tremorlab.analysis.sampling import TRIM_SECONDS
 from tremorlab.analysis.tremor import RMS_MIN_MS2, strength_to_score
@@ -20,18 +19,11 @@ CHECKS_PER_DAY = (3, 4)
 CHECK_WINDOW_LOCAL = ("07:30", "21:30")
 CHECK_MIN_GAP_MIN = 30.0
 
-CAFFEINE_DAY_FRACTION = 0.5
-POOR_SLEEP_DAY_FRACTION = 0.3
-ALCOHOL_DAY_FRACTION = 0.2
-SCALE_MIN, SCALE_MAX = 1, 5
-
 STRENGTH_FLOOR_MS2 = 0.06
 STRENGTH_RANGE_MS2 = 0.34
 WEAR_OFF_MID_H = 3.0
 WEAR_OFF_WIDTH_H = 0.5
 ONSET_H = 1.0
-CAFFEINE_FACTOR = 1.2
-POOR_SLEEP_FACTOR = 1.1
 NOISE_SIGMA = 0.12
 POSTURE_FACTOR = 0.7
 PEAK_HZ_RANGE = (4.5, 5.5)
@@ -76,10 +68,6 @@ class SeedCheck:
 
     created_at: datetime
     minutes_since_dose: float | None
-    caffeine: bool | None
-    sleep_quality: int | None
-    stress: int | None
-    alcohol: bool | None
     dose_index: int | None
     tests: list[SeedTest] = field(default_factory=list)
 
@@ -88,14 +76,6 @@ class SeedCheck:
 class SeedData:
     doses: list[SeedDose]
     checks: list[SeedCheck]
-
-
-@dataclass(frozen=True)
-class _DayFactors:
-    caffeine: bool
-    sleep_quality: int
-    stress: int
-    alcohol: bool
 
 
 def _minutes(hhmm: str) -> float:
@@ -129,29 +109,6 @@ def _clean_ms2(h: float | None, prev_interval_h: float | None) -> float:
         else _base_ms2(prev_interval_h)
     )
     return before + (STRENGTH_FLOOR_MS2 - before) * (h / ONSET_H)
-
-
-def _flagged_days(rng: np.random.Generator, days: int, fraction: float) -> set[int]:
-    """round(fraction·days) random day indices, so both groups of a factor always appear."""
-    return {int(i) for i in rng.permutation(days)[: round(fraction * days)]}
-
-
-def _day_factors(rng: np.random.Generator, days: int) -> list[_DayFactors]:
-    caffeine = _flagged_days(rng, days, CAFFEINE_DAY_FRACTION)
-    poor = _flagged_days(rng, days, POOR_SLEEP_DAY_FRACTION)
-    alcohol = _flagged_days(rng, days, ALCOHOL_DAY_FRACTION)
-    out = []
-    for i in range(days):
-        lo, hi = (SCALE_MIN, POOR_SLEEP_MAX) if i in poor else (POOR_SLEEP_MAX + 1, SCALE_MAX)
-        out.append(
-            _DayFactors(
-                caffeine=i in caffeine,
-                sleep_quality=int(rng.integers(lo, hi + 1)),
-                stress=int(rng.integers(SCALE_MIN, SCALE_MAX + 1)),
-                alcohol=i in alcohol,
-            )
-        )
-    return out
 
 
 def _check_minutes(rng: np.random.Generator) -> list[float]:
@@ -217,7 +174,6 @@ def generate(
     rng = np.random.default_rng(seed)
     last = end if end is not None else datetime.now(tz).date()
     day_list = [last - timedelta(days=days - 1 - i) for i in range(days)]
-    factors = _day_factors(rng, days)
 
     doses = [
         SeedDose(
@@ -231,7 +187,7 @@ def generate(
     dose_times = [d.taken_at for d in doses]
 
     checks = []
-    for day, f in zip(day_list, factors, strict=True):
+    for day in day_list:
         for minutes in _check_minutes(rng):
             created_at = _to_utc(day, minutes, tz)
             idx = bisect.bisect_right(dose_times, created_at) - 1
@@ -242,18 +198,11 @@ def generate(
                 else None
             )
             clean = _clean_ms2(None if since_min is None else since_min / 60.0, prev_h)
-            factor = (CAFFEINE_FACTOR if f.caffeine else 1.0) * (
-                POOR_SLEEP_FACTOR if f.sleep_quality <= POOR_SLEEP_MAX else 1.0
-            )
-            rest = round(clean * factor * float(rng.lognormal(0.0, NOISE_SIGMA)), 4)
+            rest = round(clean * float(rng.lognormal(0.0, NOISE_SIGMA)), 4)
             checks.append(
                 SeedCheck(
                     created_at=created_at,
                     minutes_since_dose=since_min,
-                    caffeine=f.caffeine,
-                    sleep_quality=f.sleep_quality,
-                    stress=f.stress,
-                    alcohol=f.alcohol,
                     dose_index=idx if idx >= 0 else None,
                     tests=_tests(rng, created_at, rest),
                 )
