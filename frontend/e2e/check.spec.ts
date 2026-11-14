@@ -57,6 +57,16 @@ test('five-step check gates progression, supports pause and survives refresh', a
     const saved = JSON.parse(localStorage.getItem('tremor-history-v1') ?? '[]') as { source: string }[]
     return saved.filter(record => record.source === 'demo').length
   })).toBe(1)
+  await page.getByRole('link', { name: 'See the result', exact: true }).click()
+  await expect(page).toHaveURL(/\/check\/results$/)
+  await expect(page.getByRole('heading', { name: 'Your check results', exact: true })).toBeVisible()
+  await expect(page.locator('.result-card')).toHaveCount(4)
+  await expect(page.locator('.result-card canvas')).toHaveCount(4)
+  await expect(page.getByText('2 hands completed', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.locator('.result-card canvas')).toHaveCount(4)
+  await page.getByRole('link', { name: 'Back to summary', exact: true }).click()
+  await expect(page.getByRole('link', { name: 'See the result', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Start a new check' }).click()
   await expect(page).toHaveURL(/\/check\/connect$/)
   await expect(page.locator('.test-continue')).toBeDisabled()
@@ -110,3 +120,51 @@ test('all five test pages fit a laptop viewport without scrolling or clipping', 
     }
   }
 })
+
+test('completion page and both actions fit without scrolling on desktop and mobile', async ({ page }) => {
+  await page.goto('/check/results')
+  await expect(page).toHaveURL(/\/check\/connect$/)
+  await page.evaluate(() => {
+    const records = Object.fromEntries(['connect', 'rest', 'posture', 'reach', 'tap'].map(step => [step, { runs: step === 'reach' ? 3 : step === 'tap' ? 2 : 1, seconds: 30 }]))
+    sessionStorage.setItem('tremor-check-v2', JSON.stringify({ mode: 'demo', records }))
+  })
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 650 }, { width: 390, height: 844 }, { width: 390, height: 740 }]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/check/complete')
+    await expect(page.getByRole('link', { name: 'See the result', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start a new check', exact: true })).toBeVisible()
+    const layout = await page.evaluate(() => ({
+      height: document.documentElement.scrollHeight,
+      width: document.documentElement.scrollWidth,
+      items: ['.check-summary h1', '.check-summary ol', '.summary-actions', '.check-summary footer'].map(selector => {
+        const element = document.querySelector(selector)!
+        const rect = element.getBoundingClientRect()
+        return { top: rect.top, bottom: rect.bottom, clipped: element.scrollHeight > element.clientHeight + 1 }
+      }),
+    }))
+    expect(layout.height).toBeLessThanOrEqual(viewport.height)
+    expect(layout.width).toBeLessThanOrEqual(viewport.width)
+    for (const item of layout.items) {
+      expect(item.top).toBeGreaterThanOrEqual(0)
+      expect(item.bottom).toBeLessThanOrEqual(viewport.height)
+      expect(item.clipped).toBe(false)
+    }
+  }
+})
+
+for (const review of ['complete', 'results']) {
+  test(`sensor ${review} keeps the backend results route`, async ({ page }) => {
+    await page.route('**/api/checks/42', route => route.fulfill({ status: 404, contentType: 'application/json', body: '{}' }))
+    await page.goto('/check/connect')
+    await page.evaluate(() => {
+      const records = Object.fromEntries(['connect', 'rest', 'posture', 'reach', 'tap'].map(step => [step, { runs: step === 'reach' ? 3 : step === 'tap' ? 2 : 1, seconds: 30 }]))
+      sessionStorage.setItem('tremor-check-v2', JSON.stringify({ mode: 'sensor', checkId: 42, hand: 'right', records }))
+    })
+    const backendResult = page.waitForResponse(response => response.url().endsWith('/api/checks/42'))
+    await page.goto(`/check/${review}`)
+    await backendResult
+    await expect(page).toHaveURL(/\/results\/42$/)
+    await expect(page.getByRole('alert')).toBeVisible()
+    await expect(page.locator('.check-results')).toHaveCount(0)
+  })
+}

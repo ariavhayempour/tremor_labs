@@ -102,6 +102,7 @@ export const copy = {
     inRange: 'In target range', targetRange: 'Target: 190–250 mm', taps: 'simulated taps', reachWindow: '6-second attempt',
     stepSaved: 'Step completed · Progress saved in this browser tab', readyToContinue: 'Ready for the next step', connectFirst: 'Connect devices to continue', finishFirst: 'Complete this test to continue',
     continueTo: 'Continue to', viewSummary: 'View summary', summary: 'Your check is complete',
+    seeResult: 'See the result', resultsTitle: 'Your check results', backSummary: 'Back to summary', resultDemo: 'Demo check · Simulated signals, not personal measurements.', resultAttempts: 'attempts completed', resultHands: 'hands completed', resultSeconds: 'seconds recorded', lastRightHand: 'Right hand · Last recorded run', lastAttempt: 'Last recorded attempt', lastWindow: 'Last recorded signal', noSavedSignal: 'No saved signal for this step.', resultSamples: 'samples',
     summaryDemo: 'All five demo steps are complete. These were simulated signals; no personal measurements were recorded.', newCheck: 'Start a new check',
     steps: {
       connect: {
@@ -127,7 +128,7 @@ export const copy = {
     },
   },
   home: {
-    navigation: 'Main navigation', home: 'Home', trends: 'Trends', settings: 'Settings', login: 'Login', demoWorkspace: 'Demo workspace',
+    testHistory: 'Test history', navigation: 'Main navigation', home: 'Home', trends: 'Trends', settings: 'Settings', login: 'Login',
     ready: 'Ready when you are', yourRoutine: 'YOUR DAILY ROUTINE', testTitle: 'Your movement check', testSubtitle: 'A few quiet moments to check in with your movement.',
     bothHands: 'Both hands', stepDetails: ['Prepare your sensors and camera', 'Let your hand rest naturally · 30 sec', 'Hold your arm steady · 30 sec', 'Slowly lower your fingertip · 3 attempts', 'Thumb to index finger · 10 sec per hand'],
     stepsComplete: 'of 5 steps completed', prepare: 'Find a comfortable seat. Keep your sensors nearby.', start: 'Start a movement check', resume: 'Resume your check',

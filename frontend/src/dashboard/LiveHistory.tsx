@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { Link } from 'react-router'
 import { Icon } from '../components/Icon'
+import { SegmentedControl } from '../components/SegmentedControl'
 import { copy } from '../copy'
 import { ActivityChart } from '../home/ActivityChart'
 import { dateLabel, timeLabel } from '../home/homeStore'
@@ -15,7 +16,7 @@ const fmt = (v: number | null, n: number) => v === null ? '—' : `${v.toFixed(v
 export function LiveHistory() {
   const [days, setDays] = useState(14)
   const state = useDashboard(days)
-  const heading = <div className="history-heading"><div><Link className="home-text-link" to="/"><Icon name="back" size={16}/>{h.home}</Link><h1>{h.historyTitle}</h1></div><div className="history-period" role="group" aria-label={h.period}>{[7, 14].map(n => <button key={n} aria-pressed={days === n} onClick={() => setDays(n)}>{n} {h.days}</button>)}</div></div>
+  const heading = <div className="history-heading"><div><Link className="home-text-link" to="/"><Icon name="back" size={16}/>{h.home}</Link><h1>{h.historyTitle}</h1></div><SegmentedControl<number> className="history-period" label={h.period} value={days} onChange={setDays} options={[{ value: 7, label: `7 ${h.days}` }, { value: 14, label: `14 ${h.days}` }]}/></div>
   if (state.status !== 'ready') return <div className="history-page">{heading}<section className="home-card"><p role={state.status === 'error' ? 'alert' : 'status'}>{state.status === 'error' ? d.error : d.loading}</p></section></div>
   const { summary, dose, profile, checks } = state.data
   return <div className="history-page">

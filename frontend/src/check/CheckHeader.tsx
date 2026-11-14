@@ -14,5 +14,6 @@ export function CheckHeader({ current, session }: { current: string; session: Ch
           : <span key={step} className="check-tab is-locked" aria-disabled="true">{content}</span>
       })}
     </nav>
+    <Link className="check-history hover-sweep" to="/dashboard"><Icon name="history" size={17}/>{copy.home.testHistory}</Link>
   </header>
 }

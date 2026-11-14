@@ -189,3 +189,28 @@ footer { display: flex; align-items: center; justify-content: center; gap: 8px; 
 .settings-form .checkbox-row { display: flex; align-items: center; gap: 8px; }
 .band-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media print { .no-print, header.topbar, footer .no-print { display: none !important; } .app main { padding: 0; } }
+
+.hover-sweep { position: relative; isolation: isolate; overflow: hidden; --sweep-fill: #dce8fb; --sweep-base: transparent; }
+.hover-sweep::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; background: var(--sweep-fill); transform: scaleX(0); transform-origin: left center; transition: transform 380ms cubic-bezier(.22,.75,.3,1); }
+.home-primary.hover-sweep { --sweep-fill: #255cc9; --sweep-base: linear-gradient(165deg,#2f6bff,#68b7ff); }
+.test-start.hover-sweep { --sweep-fill: #255cc9; --sweep-base: linear-gradient(170deg,#2f6bff,#68c4ff); }
+.test-continue.hover-sweep { --sweep-fill: #255cc9; --sweep-base: #e5e7eb; }
+.summary-restart.hover-sweep, .home-login.hover-sweep, .home-history.hover-sweep, .check-history.hover-sweep { --sweep-base: #ffffffb3; }
+.home-header nav a.active.hover-sweep { --sweep-base: #eaf3ff; }
+.history-period button[aria-pressed=true].hover-sweep { --sweep-base: #eaf3ff; }
+.hover-sweep:focus-visible:not(:disabled)::after { transform: scaleX(1); }
+.back-link { color: #66819d; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.back-link:hover { color: #346cf5; text-decoration-line: underline; }
+@media (hover: hover) and (pointer: fine) {
+  .hover-sweep:hover:not(:disabled):not([aria-disabled=true]) { background: var(--sweep-base); }
+  .hover-sweep:hover:not(:disabled):not([aria-disabled=true])::after { transform: scaleX(1); }
+  .home-primary.hover-sweep:hover, .test-start.hover-sweep:hover { background: var(--sweep-base); }
+  .test-continue.hover-sweep.is-ready:hover { background: var(--sweep-base); }
+  .home-card, .instruction-panel, .test-visualization, .result-card, .step-card { transition: transform 260ms cubic-bezier(.22,.75,.3,1), box-shadow 260ms ease; transform-origin: center; }
+  .home-card:hover, .instruction-panel:hover, .test-visualization:hover, .result-card:hover, .step-card:hover { transform: scale(1.01); box-shadow: 0 14px 32px #11437912; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hover-sweep::after { transition: none; }
+  .home-card, .instruction-panel, .test-visualization, .result-card, .step-card { transition: none; }
+  .home-card:hover, .instruction-panel:hover, .test-visualization:hover, .result-card:hover, .step-card:hover { transform: none; }
+}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import type { useSensorStream } from '../api/useSensorStream'
 import { copy } from '../copy'
 import { Icon } from '../components/Icon'
+import { SegmentedControl } from '../components/SegmentedControl'
 import { Waveform } from '../viz/Waveform'
 import { createCheck, getHealth, getSettings, led } from '../api/client'
 import type { CheckInRequest, Hand, Health } from '../api/types'
@@ -87,7 +88,7 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
   return <>
     <main className="test-workspace">
       <aside className="test-sidebar">
-        {step === 'connect' && <div className="check-mode" data-mode={session.mode} role="group" aria-label={copy.flow.source}>{(['demo', 'sensor'] as const).map(mode => <button key={mode} aria-pressed={session.mode === mode} disabled={checking} onClick={() => changeMode(mode)}>{mode === 'demo' ? copy.flow.demo : copy.flow.sensor}</button>)}</div>}
+        {step === 'connect' && <SegmentedControl<Mode> className="check-mode" label={copy.flow.source} value={session.mode} disabled={checking} onChange={changeMode} options={[{ value: 'demo', label: copy.flow.demo }, { value: 'sensor', label: copy.flow.sensor }]}/>}
         <section className="instruction-panel" aria-labelledby="test-title">
           <div className="test-step-kicker">{copy.flow.step} {index + 1} {copy.flow.of} 5</div>
           <h1 id="test-title" ref={title} tabIndex={-1}>{text.title}</h1>
@@ -99,13 +100,13 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
             <progress aria-label={copy.flow.progress} max={runSeconds(step)} value={complete ? runSeconds(step) : recording.elapsed}/>
             {(step === 'reach' || step === 'tap') && <small>{runs} / {requiredRuns(step)} {step === 'reach' ? copy.flow.attempts : copy.flow.hands}</small>}
           </div>}
-          {!complete && <button className="test-start" disabled={checking || creating || (step !== 'connect' && !demo)} onClick={step === 'connect' ? () => void connect() : active ? recording.pause : paused ? recording.resume : recording.start}>
+          {!complete && <button className="test-start hover-sweep" disabled={checking || creating || (step !== 'connect' && !demo)} onClick={step === 'connect' ? () => void connect() : active ? recording.pause : paused ? recording.resume : recording.start}>
             <Icon name={active ? 'pause' : paused ? 'play' : step === 'connect' ? 'connect' : 'play'} size={17}/>{checking ? copy.flow.connecting : active ? copy.flow.pause : paused ? copy.flow.resume : ready ? copy.sensorCheck.checkSensors : startLabel}
           </button>}
           {complete && <div className="test-completed"><Icon name="check" size={18}/>{copy.flow.complete}</div>}
           {waitingForNextRun && <p className="run-message" role="status">{step === 'tap' ? copy.flow.otherHand : copy.flow.nextReach}</p>}
         </section>
-        <Link className="test-exit" to="/overview"><Icon name="back" size={16}/>{copy.back}</Link>
+        <Link className="test-exit back-link" to="/overview"><Icon name="back" size={16}/>{copy.back}</Link>
       </aside>
       <div className="test-output">
         <section className="test-visualization" aria-labelledby="live-output-title">
@@ -122,7 +123,7 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
               </>}
           <div className="test-next-row test-visualization-footer">
             <span className="test-next-status" role="status">{error || (complete ? copy.flow.readyToContinue : demo ? copy.flow.demoNotice : copy.sensorCheck.notice)}</span>
-            <button className={`test-continue ${complete ? 'is-ready' : ''}`} disabled={!complete} onClick={() => navigate(`/check/${next ?? 'complete'}`)}><span className="continue-label">{next ? `${copy.flow.continueTo} ${copy.flow.steps[next].label}` : copy.flow.viewSummary}<Icon name="arrow" size={18}/></span></button>
+            <button className={`test-continue hover-sweep ${complete ? 'is-ready' : ''}`} disabled={!complete} onClick={() => navigate(`/check/${next ?? 'complete'}`)}><span className="continue-label">{next ? `${copy.flow.continueTo} ${copy.flow.steps[next].label}` : copy.flow.viewSummary}<Icon name="arrow" size={18}/></span></button>
           </div>
         </section>
         <footer className="test-footer">{copy.footer}</footer>

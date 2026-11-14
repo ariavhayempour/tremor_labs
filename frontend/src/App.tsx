@@ -14,6 +14,7 @@ import { USE_FIXTURES, getSim } from './api/client'
 import { Results } from './results/Results'
 import { Report } from './report/Report'
 import { Settings } from './settings/Settings'
+import { usePageTransition } from './hooks/usePageTransition'
 export default function App() {
   const [params, setParams] = useState(defaultSim)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -21,6 +22,7 @@ export default function App() {
   // The simulator keeps its own parameters; mirror them so the dev panel starts in sync.
   useEffect(() => { if (!USE_FIXTURES && stream.source === 'sim') void getSim().then(setParams, () => undefined) }, [stream.source])
   const { pathname } = useLocation()
+  usePageTransition(pathname)
   if (pathname === '/check-in') return <Navigate to="/check/connect" replace/>
   if (pathname.startsWith('/check/')) return <Routes><Route path="/check/:step" element={<CheckFlow stream={stream}/>}/></Routes>
   if (pathname === '/' || pathname === '/overview') return <HomeShell><Home/></HomeShell>
