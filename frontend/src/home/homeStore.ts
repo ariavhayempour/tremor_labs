@@ -1,14 +1,12 @@
 export interface HistoryEntry { id: string; at: string; seconds: number; source: 'sample' | 'demo' }
 export interface Profile { name: string; email: string }
 export interface Preferences { hand: string; reminders: boolean }
-export interface CheckInValues { sleep: number; stress: number; caffeine: boolean }
 export const historyKey = 'tremor-history-v1'
 function readObject(key: string): Record<string, unknown> {
   try { const value: unknown = JSON.parse(localStorage.getItem(key) ?? 'null'); return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {} } catch { return {} }
 }
 export function readProfile(): Profile { const value = readObject('tremor-profile'); return { name: typeof value.name === 'string' ? value.name : '', email: typeof value.email === 'string' ? value.email : '' } }
 export function readPreferences(): Preferences { const value = readObject('tremor-preferences'); return { hand: value.hand === 'left' ? 'left' : 'right', reminders: value.reminders !== false } }
-export function readCheckIn(): CheckInValues { const v = readObject('tremor-daily-check-in'); return { sleep: typeof v.sleep === 'number' && v.sleep >= 1 && v.sleep <= 5 ? v.sleep : 3, stress: typeof v.stress === 'number' && [1, 3, 5].includes(v.stress) ? v.stress : 3, caffeine: v.caffeine === true } }
 export function saveLocal(key: string, value: unknown): boolean { try { localStorage.setItem(key, JSON.stringify(value)); return true } catch { return false } }
 export function sampleHistory(): HistoryEntry[] {
   return Array.from({ length: 14 }, (_, day) => {

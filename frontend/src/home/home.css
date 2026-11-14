@@ -49,25 +49,7 @@
 .home-chart { min-width: 0; min-height: 100px; }
 .home-trend-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; font-size: 10px; color: #91a0b5; }
 .home-text-link { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 550; color: #346cf5; min-height: 30px; }
-.daily-card { display: flex; flex-direction: column; }
-.daily-card form { display: flex; flex-direction: column; flex: 1; justify-content: space-between; margin-top: 18px; gap: 14px; }
-.daily-card fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
-.daily-card legend { padding: 0; margin-bottom: 10px; font-size: 12px; color: #526b89; }
-.sleep-choices { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
-.sleep-choices label, .stress-choices label { position: relative; cursor: pointer; }
-.sleep-choices input, .stress-choices input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-.sleep-choices span, .stress-choices span { display: grid; place-items: center; min-height: 34px; background: #f6f9fe; border: 1px solid #2f6bff20; border-radius: 7px; font-size: 12px; color: #7a8ca4; }
-.sleep-choices input:checked + span, .stress-choices input:checked + span { background: #eaf3ff; border-color: #789ffd; color: #346cf5; font-weight: 600; }
-.sleep-choices input:focus-visible + span, .stress-choices input:focus-visible + span { outline: 2px solid #346cf5; outline-offset: 2px; }
 .choice-hints { display: flex; justify-content: space-between; font-size: 10px; color: #9aadc4; margin-top: 5px; }
-.daily-second-row { display: flex; align-items: end; gap: 22px; }
-.daily-second-row fieldset { flex: 1; }
-.stress-choices { display: flex; gap: 7px; }
-.stress-choices label { flex: 1; }
-.caffeine-choice { display: flex; gap: 6px; align-items: center; min-height: 34px; font-size: 11px; color: #6d85a1; }
-.caffeine-choice input { accent-color: #346cf5; }
-.daily-save { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.daily-save > span { font-size: 11px; color: #6d85a1; }
 .home-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 14px; border: 1px solid #2f6bff30; border-radius: 8px; background: #eaf3ff; color: #346cf5; font-size: 12px; min-height: 36px; }
 .home-footer { padding: 4px 16px 10px; font-size: 10px; color: #8a9ab1; }
 .home-dialog { margin: auto; width: min(440px,calc(100% - 32px)); border: 1px solid #bcd1fa; border-radius: 18px; padding: 24px; color: #0b1f3a; box-shadow: 0 24px 80px #11437930; background: #fff; }
@@ -115,17 +97,12 @@
   .home-history-numbers > strong { font-size: 24px; }
   .home-chart { min-height: 75px; }
   .home-trend-footer { padding-top: 2px; }
-  .daily-card form { margin-top: 12px; gap: 9px; }
-  .daily-card legend { margin-bottom: 6px; }
-  .sleep-choices span, .stress-choices span { min-height: 30px; }
   .choice-hints { font-size: 9px; margin-top: 3px; }
 }
 @media(max-width:1100px) {
   .home-header { gap: 20px; padding: 12px 24px; }
   .home-header nav { margin-left: 0; }
   .home-demo { display: none; }
-  .daily-second-row { gap: 12px; }
-  .caffeine-choice { font-size: 10px; }
 }
 @media(max-width:900px) {
   .home-app { grid-template-rows: auto 1fr auto; }
@@ -139,7 +116,6 @@
   .operate-title { margin-top: 22px; }
   .home-test-steps li { min-height: 58px; }
   .home-chart { height: 150px; }
-  .daily-card form { gap: 18px; }
   .home-footer { padding: 16px 20px; }
 }
 @media(max-width:480px) {
@@ -157,9 +133,6 @@
   .home-card-heading h2 { font-size: 16px; }
   .home-card-heading p { font-size: 10px; }
   .home-preparation { align-items: start; }
-  .daily-second-row { flex-wrap: wrap; }
-  .daily-second-row fieldset { flex-basis: 100%; }
-  .caffeine-choice { font-size: 12px; }
   .history-heading { align-items: start; flex-direction: column; }
   .history-list { padding: 16px 10px; }
   .history-list th, .history-list td { padding: 12px 4px; font-size: 10px; }
