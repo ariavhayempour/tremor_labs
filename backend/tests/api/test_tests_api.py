@@ -56,7 +56,7 @@ def test_post_check_then_rest_flow_via_http(h: Harness) -> None:
         json={"medication": "hours_ago", "hours_ago": 2, "caffeine": True, "sleep_quality": 4},
     )
     assert r.status_code == 201
-    assert r.json() == {"check_id": r.json()["check_id"], "minutes_since_dose": None}
+    assert r.json() == {"check_id": r.json()["check_id"], "minutes_since_dose": 120.0}
     check_id = r.json()["check_id"]
 
     r = h.start(check_id)
