@@ -17,15 +17,36 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
   const recording = useCheckRecording(step, onFinish, session.records[step]?.samples)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
+  const [detectedCount, setDetectedCount] = useState(complete ? 3 : 0)
+  const [celebrating, setCelebrating] = useState(false)
+  const celebrationTimer = useRef<number | undefined>(undefined)
   const title = useRef<HTMLHeadingElement>(null)
   useEffect(() => { title.current?.focus({ preventScroll: true }); window.scrollTo(0, 0) }, [])
   const connectionTimer = useRef<number | undefined>(undefined)
   const alive = useRef(true)
-  useEffect(() => { alive.current = true; return () => { alive.current = false; clearTimeout(connectionTimer.current) } }, [])
+  useEffect(() => { alive.current = true; return () => { alive.current = false; clearTimeout(connectionTimer.current); clearTimeout(celebrationTimer.current) } }, [])
+  function changeMode(mode: Mode) {
+    if (mode === session.mode) return
+    clearTimeout(connectionTimer.current)
+    clearTimeout(celebrationTimer.current)
+    setChecking(false); setError(''); setDetectedCount(0); setCelebrating(false)
+    onMode(mode)
+  }
   async function connect() {
-    setChecking(true); setError('')
+    if (checking || complete) return
+    setChecking(true); setError(''); setDetectedCount(0); setCelebrating(false)
     if (demo) {
-      connectionTimer.current = window.setTimeout(() => { onFinish(); setChecking(false) }, 700)
+      let detected = 0
+      function detectNext() {
+        if (!alive.current) return
+        detected += 1
+        setDetectedCount(detected)
+        if (detected === 3) {
+          onFinish(); setChecking(false); setCelebrating(true)
+          celebrationTimer.current = window.setTimeout(() => setCelebrating(false), 1600)
+        } else connectionTimer.current = window.setTimeout(detectNext, 400)
+      }
+      connectionTimer.current = window.setTimeout(detectNext, 400)
       return
     }
     try {
@@ -44,7 +65,7 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
   return <>
     <main className="test-workspace">
       <aside className="test-sidebar">
-        {step === 'connect' && <div className="check-mode" role="group" aria-label={copy.flow.source}>{(['demo', 'sensor'] as const).map(mode => <button key={mode} aria-pressed={session.mode === mode} disabled={checking} onClick={() => onMode(mode)}>{mode === 'demo' ? copy.flow.demo : copy.flow.sensor}</button>)}</div>}
+        {step === 'connect' && <div className="check-mode" data-mode={session.mode} role="group" aria-label={copy.flow.source}>{(['demo', 'sensor'] as const).map(mode => <button key={mode} aria-pressed={session.mode === mode} disabled={checking} onClick={() => changeMode(mode)}>{mode === 'demo' ? copy.flow.demo : copy.flow.sensor}</button>)}</div>}
         <section className="instruction-panel" aria-labelledby="test-title">
           <div className="test-step-kicker">{copy.flow.step} {index + 1} {copy.flow.of} 5</div>
           <h1 id="test-title" ref={title} tabIndex={-1}>{text.title}</h1>
@@ -62,24 +83,24 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
           {complete && <div className="test-completed"><Icon name="check" size={18}/>{copy.flow.complete}</div>}
           {waitingForNextRun && <p className="run-message" role="status">{step === 'tap' ? copy.flow.otherHand : copy.flow.nextReach}</p>}
         </section>
-        <div className="test-source"><Icon name="shield" size={16}/><div><strong>{demo ? copy.flow.demo : copy.flow.sensor}</strong><span>{demo ? copy.flow.demoNotice : copy.flow.sensorNotice}</span></div></div>
         <Link className="test-exit" to="/overview"><Icon name="back" size={16}/>{copy.back}</Link>
       </aside>
       <div className="test-output">
         <section className="test-visualization" aria-labelledby="live-output-title">
           <div className="test-output-heading"><h2 id="live-output-title">{copy.sensor}</h2><span className="status"><span className={`dot ${active ? '' : 'gray'}`}/>{demo ? copy.flow.simulated : stream.connected ? copy.live : copy.disconnected}</span></div>
           {step === 'connect'
-            ? <DeviceStatus demo={demo} connected={complete} checking={checking}/>
+            ? <DeviceStatus demo={demo} connected={complete} checking={checking} detectedCount={detectedCount} celebrating={celebrating}/>
             : <>
                 <div className="test-graph-toolbar"><span><Icon name={step === 'reach' ? 'reach' : step === 'tap' ? 'tap' : 'wave'} size={18}/>{text.visualization}</span><span className="muted">{complete ? copy.flow.complete : paused ? copy.flow.paused : active ? copy.flow.recording : copy.flow.ready}</span></div>
                 {step === 'posture' && <div className="height-guide"><span>{copy.flow.handHeight}</span><strong>{recording.height} {copy.flow.mm}</strong><span className="height-band">{active || complete ? copy.flow.inRange : copy.flow.targetRange}</span></div>}
                 {step === 'tap' && <div className="tap-metrics"><span>{runs === 0 || (recording.phase === 'finished' && runs === 1) ? copy.flow.leftHand : copy.flow.rightHand}</span><strong>{recording.taps}<small>{copy.flow.taps}</small></strong></div>}
                 <div className="test-graph"><div className="chart-label">{graphLabel}</div><Waveform buf={demo ? recording.buffer : stream.imu} min={step === 'reach' ? 0 : step === 'tap' ? 0 : -2} max={step === 'reach' ? 350 : step === 'tap' ? 1 : 2} seconds={step === 'reach' ? 6 : 5} label={text.graphLabel}/><div className="chart-bottom"><span>{step === 'reach' ? copy.flow.reachWindow : copy.sample}</span><span>{copy.timeAxis}</span></div></div>
               </>}
-          <div className="test-visualization-footer" role="status">{error || (complete ? copy.flow.stepSaved : demo ? copy.flow.demoNotice : copy.flow.sensorNotice)}</div>
+          <div className="test-next-row test-visualization-footer">
+            <span className="test-next-status" role="status">{error || (complete ? copy.flow.readyToContinue : demo ? copy.flow.demoNotice : copy.flow.sensorNotice)}</span>
+            <button className={`test-continue ${complete ? 'is-ready' : ''}`} disabled={!complete} onClick={() => navigate(`/check/${next ?? 'complete'}`)}><span className="continue-label">{next ? `${copy.flow.continueTo} ${copy.flow.steps[next].label}` : copy.flow.viewSummary}<Icon name="arrow" size={18}/></span></button>
+          </div>
         </section>
-        <div className="test-next-row"><span className="test-next-status" aria-live="polite">{complete ? copy.flow.readyToContinue : step === 'connect' ? copy.flow.connectFirst : copy.flow.finishFirst}</span><button className={`test-continue ${complete ? 'is-ready' : ''}`} disabled={!complete} onClick={() => navigate(`/check/${next ?? 'complete'}`)}>{next ? `${copy.flow.continueTo} ${copy.flow.steps[next].label}` : copy.flow.viewSummary}<Icon name="arrow" size={18}/></button></div>
-        <section className="test-activity"><h2>{copy.activity}</h2><ul>{steps.filter(s => session.records[s]).map(s => <li key={s}><Icon name={isComplete(session, s) ? 'check' : 'clock'} size={17}/><span>{copy.flow.steps[s].label}</span><small>{isComplete(session, s) ? copy.flow.complete : `${session.records[s]?.runs} / ${requiredRuns(s)}`}</small></li>)}{!Object.keys(session.records).length && <li className="muted"><Icon name="report" size={20}/>{copy.noChecks}</li>}</ul></section>
         <footer className="test-footer">{copy.footer}</footer>
       </div>
     </main>

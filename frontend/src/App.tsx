@@ -3,6 +3,8 @@ import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router'
 import { copy } from './copy'
 import { Icon } from './components/Icon'
 import { Home } from './screens/Home'
+import { HomeShell } from './home/HomeShell'
+import { History } from './screens/History'
 import { CheckFlow } from './check/CheckFlow'
 import { Placeholder } from './screens/Placeholder'
 import { DevPanel } from './screens/DevPanel'
@@ -14,8 +16,10 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const stream = useSensorStream(params)
   const { pathname } = useLocation()
-  if (pathname === '/' || pathname === '/check-in') return <Navigate to="/check/connect" replace/>
+  if (pathname === '/check-in') return <Navigate to="/check/connect" replace/>
   if (pathname.startsWith('/check/')) return <Routes><Route path="/check/:step" element={<CheckFlow stream={stream}/>}/></Routes>
+  if (pathname === '/' || pathname === '/overview') return <HomeShell><Home/></HomeShell>
+  if (pathname === '/dashboard') return <HomeShell dashboard><History/></HomeShell>
   const nav = [['home', '/overview'], ['dashboard', '/dashboard'], ['report', '/report'], ['settings', '/settings']] as const
   return (
     <div className="app">
@@ -45,7 +49,7 @@ export default function App() {
           </div>
         </div>
       </header>
-      <main><Routes><Route path="/overview" element={<Home stream={stream} params={params} onChange={setParams}/>}/><Route path="/dev" element={<DevPanel params={params} onChange={setParams} stream={stream}/>}/>{[['/dashboard', copy.nav.dashboard], ['/report', copy.nav.report], ['/settings', copy.nav.settings], ['/results/:checkId', copy.activity]].map(([path, title]) => <Route key={path} path={path} element={<Placeholder title={title}/>}/>)}<Route path="*" element={<Placeholder title={copy.notFound}/>}/></Routes><footer><Icon name="shield" size={16}/>{copy.footer}</footer></main>
+      <main><Routes><Route path="/dev" element={<DevPanel params={params} onChange={setParams} stream={stream}/>}/>{[['/dashboard', copy.nav.dashboard], ['/report', copy.nav.report], ['/settings', copy.nav.settings], ['/results/:checkId', copy.activity]].map(([path, title]) => <Route key={path} path={path} element={<Placeholder title={title}/>}/>)}<Route path="*" element={<Placeholder title={copy.notFound}/>}/></Routes><footer><Icon name="shield" size={16}/>{copy.footer}</footer></main>
     </div>
   )
 }

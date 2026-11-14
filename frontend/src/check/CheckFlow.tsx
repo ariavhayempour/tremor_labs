@@ -9,7 +9,7 @@ import { availableStep, finishRun, initialSession, readSession, steps, storageKe
 export function CheckFlow({ stream }: { stream: ReturnType<typeof useSensorStream> }) {
   const { step = 'connect' } = useParams()
   const [session, setSession] = useState(readSession)
-  useEffect(() => { try { sessionStorage.setItem(storageKey, JSON.stringify(session)) } catch { /* Keep the check usable when browser storage is disabled. */ } }, [session])
+  useEffect(() => { try { sessionStorage.setItem(storageKey, JSON.stringify(session)); if (!Object.keys(session.records).length) sessionStorage.removeItem('tremor-history-recorded') } catch { /* Keep the check usable when browser storage is disabled. */ } }, [session])
   const allowed = availableStep(session)
   const index = steps.indexOf(step as CheckStep)
   if (step !== 'complete' && index < 0) return <Navigate to="/check/connect" replace/>
@@ -19,6 +19,6 @@ export function CheckFlow({ stream }: { stream: ReturnType<typeof useSensorStrea
     <CheckHeader current={step} session={session}/>
     {step === 'complete'
       ? <CheckSummary session={session} onReset={() => setSession({ ...initialSession, mode: session.mode })}/>
-      : <CheckPage key={`${step}-${session.mode}`} step={step as CheckStep} session={session} stream={stream} onMode={changeMode} onFinish={(samples?: SignalPoint[]) => setSession(current => finishRun(current, step as CheckStep, samples))}/>}
+      : <CheckPage key={step} step={step as CheckStep} session={session} stream={stream} onMode={changeMode} onFinish={(samples?: SignalPoint[]) => setSession(current => finishRun(current, step as CheckStep, samples))}/>}
   </div>
 }

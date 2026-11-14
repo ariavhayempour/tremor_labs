@@ -1,61 +1,27 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import type { SimParams } from '../api/types'
-import type { useSensorStream } from '../api/useSensorStream'
-import { USE_FIXTURES } from '../api/client'
-import { SimulatorControls } from '../components/SimulatorControls'
 import { copy } from '../copy'
 import { Icon } from '../components/Icon'
-import { Waveform } from '../viz/Waveform'
-
-export function Home({ stream, params, onChange }: { stream: ReturnType<typeof useSensorStream>; params: SimParams; onChange: (p: SimParams) => void }) {
-  const [paused, setPaused] = useState(false)
-  return <>
-    <div className="page-heading">
-      <h1>{copy.nav.home}</h1>
-      <span className="privacy"><Icon name="shield" size={18}/>{copy.local}</span>
-    </div>
-    <div className="overview-workspace">
-      <div className="overview-input">
-        <section className="input-section" aria-labelledby="input-heading">
-          <div className="section-heading"><h2 id="input-heading">{copy.input}</h2><Icon name="settings" size={20}/></div>
-          {import.meta.env.DEV && stream.source === 'sim'
-            ? <><h3 className="subheading">{copy.controls}</h3><SimulatorControls params={params} onChange={onChange}/></>
-            : <p className="connection-message" role="status">{stream.connected ? copy.backendBody : copy.offline}</p>}
-        </section>
-        <section className="check-section" aria-labelledby="check-heading">
-          <div className="section-heading"><h2 id="check-heading">{copy.check}</h2><span className="duration"><Icon name="clock" size={16}/>{copy.duration}</span></div>
-          <ol className="check-list">
-            {copy.steps.map(step => <li key={step.name}><Icon name={step.icon} size={20}/><span>{step.name}</span><span className="muted">{step.time}</span></li>)}
-          </ol>
-          <Link className="button primary" to="/check-in">{copy.start}<Icon name="arrow" size={20}/></Link>
-        </section>
-      </div>
-      <div className="overview-output">
-        <section className="signal-tool" aria-labelledby="signal-heading">
-          <div className="section-heading">
-            <h2 id="signal-heading">{copy.sensor}</h2>
-            <span className={`status ${stream.connected ? '' : 'offline'}`}><span className="dot"/>{USE_FIXTURES ? copy.simulated : stream.connected ? copy.live : copy.disconnected}</span>
-          </div>
-          <div className="signal-toolbar">
-            <span><Icon name="wave" size={18}/>{copy.signal}</span>
-            <div className="signal-actions">
-              {paused && <span className="muted">{copy.paused}</span>}
-              <button className="icon-button" aria-label={paused ? copy.resume : copy.pause} data-tooltip={paused ? copy.resume : copy.pause} onClick={() => setPaused(!paused)}><Icon name={paused ? 'play' : 'pause'} size={20}/></button>
-            </div>
-          </div>
-          <div className="waveform-frame">
-            <div className="chart-label">{copy.axis}</div>
-            <Waveform buf={stream.imu} paused={paused}/>
-            <div className="chart-bottom"><span>{copy.sample}</span><span>{copy.timeAxis}</span></div>
-          </div>
-          <div className="signal-footer" role="status">{USE_FIXTURES ? copy.fixtureNotice : !stream.connected ? copy.offline : copy.backendBody}</div>
-        </section>
-        <section className="activity" aria-labelledby="activity-heading">
-          <h2 id="activity-heading">{copy.activity}</h2>
-          <div className="empty-row"><Icon name="report" size={24}/><span>{copy.noChecks}</span></div>
-        </section>
-      </div>
-    </div>
-  </>
+import { availableStep, readSession, steps, storageKey } from '../check/checkSession'
+import { ActivityChart } from '../home/ActivityChart'
+import { HandComparison } from '../home/HandComparison'
+import { dateLabel, readHistory } from '../home/homeStore'
+export function Home() {
+  const [history] = useState(readHistory)
+  const [session] = useState(readSession)
+  const stage = availableStep(session)
+  const resume = stage > 0 && stage < 5
+  const next = resume ? steps[stage] : 'connect'
+  function prepareCheck() { if (stage === 5) { sessionStorage.removeItem(storageKey); sessionStorage.removeItem('tremor-history-recorded') } }
+  return <div className="home-grid">
+    <section className="home-card operate-card" aria-labelledby="movement-title">
+      <div className="home-card-heading"><span className="home-card-icon"><Icon name="wave" size={23}/></span><span className="home-ready"><span/>{copy.home.ready}</span></div>
+      <div className="operate-title"><span className="home-eyebrow">{copy.home.yourRoutine}</span><h1 id="movement-title">{copy.home.testTitle}</h1><p>{copy.home.testSubtitle}</p></div>
+      <div className="home-test-meta"><span><Icon name="clock" size={16}/>{copy.duration}</span><span><Icon name="tap" size={16}/>{copy.home.bothHands}</span></div>
+      <ol className="home-test-steps">{steps.map((step, i) => <li key={step}><span className={`home-step-icon ${i < stage ? 'complete' : ''}`}><Icon name={i < stage ? 'check' : ['connect','rest','posture','reach','tap'][i]} size={20}/></span><div><strong>{copy.flow.steps[step].label}</strong><span>{copy.home.stepDetails[i]}</span></div><span className="home-step-index">{String(i + 1).padStart(2, '0')}</span></li>)}</ol>
+      <div className="operate-bottom"><div className="home-preparation"><Icon name="sensor" size={17}/><span>{resume ? `${stage} ${copy.home.stepsComplete}` : copy.home.prepare}</span></div><Link className="home-primary" to={`/check/${next}`} onClick={prepareCheck}>{resume ? copy.home.resume : copy.home.start}<Icon name="arrow" size={20}/></Link></div>
+    </section>
+    <section className="home-card trends-card" aria-labelledby="trends-title"><div className="home-card-heading"><span className="home-card-icon"><Icon name="dashboard" size={21}/></span><div><h2 id="trends-title">{copy.home.trends}</h2><p>{copy.home.trendsSubtitle}</p></div><span className="sample-badge">{copy.home.sampleHistory}</span></div><div className="home-history-numbers"><strong>{history.length}<span>{copy.home.checks}</span></strong><span>{copy.home.last14Days}<small>{copy.home.latest} {dateLabel(history[0].at)}</small></span></div><ActivityChart history={history}/><div className="home-trend-footer"><span>{copy.home.last7Days}</span><Link to="/dashboard" className="home-text-link">{copy.home.openHistory}<Icon name="arrow" size={17}/></Link></div></section>
+    <HandComparison/>
+  </div>
 }
