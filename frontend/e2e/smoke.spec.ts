@@ -1,17 +1,24 @@
 import { expect, test } from '@playwright/test'
 test('home, navigation and simulator work without a backend', async ({ page }) => {
-  await page.goto('/')
+  await page.goto('/overview')
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible()
   await expect(page.locator('canvas')).toBeVisible()
   await expect.poll(() => page.locator('canvas').evaluate(canvas => {
     const context = (canvas as HTMLCanvasElement).getContext('2d')!
     const pixels = context.getImageData(0, 0, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height).data
     let count = 0
-    for (let i = 0; i < pixels.length; i += 4) if (pixels[i] < 100 && pixels[i + 1] > 100 && pixels[i + 1] < 160 && pixels[i + 3] > 150) count++
+    for (let i = 0; i < pixels.length; i += 4) if (pixels[i] < 100 && pixels[i + 1] < 100 && pixels[i + 2] < 100 && pixels[i + 3] > 150) count++
     return count
   })).toBeGreaterThan(50)
+  await page.getByRole('button', { name: 'Pause waveform', exact: true }).click()
+  const frozen = await page.locator('canvas').evaluate(canvas => (canvas as HTMLCanvasElement).toDataURL())
+  await page.waitForTimeout(200)
+  expect(await page.locator('canvas').evaluate(canvas => (canvas as HTMLCanvasElement).toDataURL())).toBe(frozen)
+  await page.getByRole('button', { name: 'Resume waveform', exact: true }).click()
+  await expect.poll(() => page.locator('canvas').evaluate(canvas => (canvas as HTMLCanvasElement).toDataURL())).not.toBe(frozen)
   await page.getByRole('link', { name: 'Explore your check' }).click()
-  await expect(page.getByRole('heading', { name: 'Get to know your check' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Connect to Devices', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Back to overview' }).click()
   await page.getByRole('link', { name: 'Simulator', exact: true }).click()
   const slider = page.getByRole('slider', { name: 'Tremor frequency (Hz)' })
   await slider.fill('10')
@@ -21,7 +28,7 @@ test('home, navigation and simulator work without a backend', async ({ page }) =
 })
 test('mobile layout fits the viewport and navigation opens', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/')
+  await page.goto('/overview')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.getByRole('button', { name: 'Toggle navigation' }).click()
   await page.getByRole('link', { name: 'Your trends', exact: true }).click()

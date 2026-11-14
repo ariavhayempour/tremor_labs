@@ -1,9 +1,12 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { copy } from '../copy'
-import type { RingBuf } from './ringbuf'
-export function Waveform({ buf }: { buf: RefObject<RingBuf> }) {
+import { RingBuf } from './ringbuf'
+export function Waveform({ buf, paused = false, min = -2, max = 2, seconds = 5, label = copy.signalLabel }: { buf: RefObject<RingBuf>; paused?: boolean; min?: number; max?: number; seconds?: number; label?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
+    const snapshot = new RingBuf(buf.current.capacity, buf.current.width)
+    if (paused) buf.current.forEach((t, row) => snapshot.push(t, row))
+    const data = paused ? snapshot : buf.current
     let frame: number
     function draw() {
       const el = canvas.current
@@ -17,21 +20,22 @@ export function Waveform({ buf }: { buf: RefObject<RingBuf> }) {
       ctx.clearRect(0, 0, width, height)
       const left = 48, plot = width - left - 8
       ctx.font = '12px system-ui'
-      ctx.fillStyle = '#71837c'
-      ctx.strokeStyle = '#e5ece7'
+      const palette = getComputedStyle(el)
+      ctx.fillStyle = palette.getPropertyValue('--chart-label').trim()
+      ctx.strokeStyle = palette.getPropertyValue('--chart-grid').trim()
       for (let i = 0; i < 5; i++) {
         const y = 12 + i * (height - 36) / 4
         ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(width, y); ctx.stroke()
-        ctx.fillText((2 - i).toFixed(1), 9, y + 4)
+        ctx.fillText((max - i * (max - min) / 4).toFixed(max > 10 ? 0 : 1), 9, y + 4)
       }
-      for (let i = 0; i <= 5; i++) ctx.fillText(String(i - 5), left + i * plot / 5 - 4, height - 2)
-      const latest = buf.current.last()?.t ?? 0
-      ctx.strokeStyle = '#377968'; ctx.lineWidth = 1.7; ctx.beginPath()
+      for (let i = 0; i <= seconds; i++) ctx.fillText(String(i - seconds), left + i * plot / seconds - 4, height - 2)
+      const latest = data.last()?.t ?? 0
+      ctx.strokeStyle = palette.getPropertyValue('--signal').trim(); ctx.lineWidth = 1.7; ctx.beginPath()
       let first = true
-      buf.current.forEach((t, row) => {
-        if (t < latest - 5) return
-        const x = left + (t - latest + 5) / 5 * plot
-        const y = 12 + (2 - Math.max(-2, Math.min(2, row[0]))) / 4 * (height - 36)
+      data.forEach((t, row) => {
+        if (t < latest - seconds) return
+        const x = left + (t - latest + seconds) / seconds * plot
+        const y = 12 + (max - Math.max(min, Math.min(max, row[0]))) / (max - min) * (height - 36)
         if (first) { ctx.moveTo(x, y); first = false } else ctx.lineTo(x, y)
       })
       ctx.stroke()
@@ -39,6 +43,6 @@ export function Waveform({ buf }: { buf: RefObject<RingBuf> }) {
     }
     draw()
     return () => cancelAnimationFrame(frame)
-  }, [buf])
-  return <canvas ref={canvas} role="img" aria-label={copy.signalLabel} />
+  }, [buf, paused, min, max, seconds])
+  return <canvas ref={canvas} role="img" aria-label={label} />
 }
