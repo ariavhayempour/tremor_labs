@@ -78,6 +78,7 @@ def create_app(
 
     app = FastAPI(title="Tremor Lab", lifespan=lifespan)
     app.state.config = config
+    app.state.clock = clock or time.time
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[config.cors_origin],

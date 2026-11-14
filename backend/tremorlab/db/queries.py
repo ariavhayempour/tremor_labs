@@ -62,7 +62,9 @@ def _db_bool(v: bool | None) -> int | None:
     return None if v is None else int(v)
 
 
-def _range_sql(column: str, start: datetime | None, end: datetime | None) -> tuple[str, list[str]]:
+def _range_clauses(
+    column: str, start: datetime | None, end: datetime | None
+) -> tuple[list[str], list[str]]:
     clauses: list[str] = []
     args: list[str] = []
     if start is not None:
@@ -71,6 +73,11 @@ def _range_sql(column: str, start: datetime | None, end: datetime | None) -> tup
     if end is not None:
         clauses.append(f"{column} <= ?")
         args.append(_iso(end))
+    return clauses, args
+
+
+def _range_sql(column: str, start: datetime | None, end: datetime | None) -> tuple[str, list[str]]:
+    clauses, args = _range_clauses(column, start, end)
     return (" WHERE " + " AND ".join(clauses) if clauses else ""), args
 
 
@@ -355,3 +362,49 @@ def latest_replayable_tests(
         if all(kind in found for kind in types):
             return [found[kind] for kind in types]
     return []
+
+
+def done_metrics(
+    conn: sqlite3.Connection, start: datetime | None, end: datetime | None
+) -> list[tuple[CheckRow, TestRow, ResultRow]]:
+    """Done tests with a result, checks start <= created_at <= end; details are left empty."""
+    clauses, args = _range_clauses("c.created_at", start, end)
+    check_cols = ", ".join(f"c.{c.strip()}" for c in _CHECK_COLS.split(","))
+    result_cols = ", ".join(f"r.{f}" for f in _RESULT_FIELDS)
+    sql = (
+        f"SELECT {check_cols}, t.id AS test_id, t.type AS test_type, t.hand, t.started_at,"
+        f" t.ended_at, t.status, t.fail_reason, t.markers_json, {result_cols},"
+        " NULL AS details_json FROM tests t"
+        " JOIN checks c ON c.id = t.check_id JOIN results r ON r.test_id = t.id"
+        f" WHERE {' AND '.join(['t.status = ?', *clauses])}"
+        " ORDER BY c.created_at, c.id, t.started_at, t.id"
+    )
+    out = []
+    for r in conn.execute(sql, ["done", *args]):
+        test = TestRow(
+            id=r["test_id"],
+            check_id=r["id"],
+            type=cast(TestType, r["test_type"]),
+            hand=cast(Hand, r["hand"]),
+            started_at=_dt(r["started_at"]),
+            ended_at=_opt_dt(r["ended_at"]),
+            status=cast(TestStatus, r["status"]),
+            fail_reason=cast(FailReason | None, r["fail_reason"]),
+            markers=json.loads(r["markers_json"]) if r["markers_json"] else [],
+        )
+        out.append((_check_row(r), test, _result_row(r)))
+    return out
+
+
+def completed_check_times(
+    conn: sqlite3.Connection, start: datetime | None, end: datetime | None
+) -> list[datetime]:
+    """created_at of checks with a done test, start <= created_at <= end, oldest first."""
+    clauses, args = _range_clauses("c.created_at", start, end)
+    done = "EXISTS (SELECT 1 FROM tests t WHERE t.check_id = c.id AND t.status = 'done')"
+    rows = conn.execute(
+        f"SELECT c.created_at FROM checks c WHERE {' AND '.join([done, *clauses])}"
+        " ORDER BY c.created_at, c.id",
+        args,
+    )
+    return [_dt(r["created_at"]) for r in rows]
