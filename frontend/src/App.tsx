@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router'
 import { copy } from './copy'
 import { Icon } from './components/Icon'
@@ -10,11 +10,13 @@ import { Placeholder } from './screens/Placeholder'
 import { DevPanel } from './screens/DevPanel'
 import { useSensorStream } from './api/useSensorStream'
 import { defaultSim } from './api/types'
-import { USE_FIXTURES } from './api/client'
+import { USE_FIXTURES, getSim } from './api/client'
 export default function App() {
   const [params, setParams] = useState(defaultSim)
   const [menuOpen, setMenuOpen] = useState(false)
   const stream = useSensorStream(params)
+  // The simulator keeps its own parameters; mirror them so the dev panel starts in sync.
+  useEffect(() => { if (!USE_FIXTURES && stream.source === 'sim') void getSim().then(setParams, () => undefined) }, [stream.source])
   const { pathname } = useLocation()
   if (pathname === '/check-in') return <Navigate to="/check/connect" replace/>
   if (pathname.startsWith('/check/')) return <Routes><Route path="/check/:step" element={<CheckFlow stream={stream}/>}/></Routes>

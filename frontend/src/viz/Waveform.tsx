@@ -1,7 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { copy } from '../copy'
 import { RingBuf } from './ringbuf'
-export function Waveform({ buf, paused = false, min = -2, max = 2, seconds = 5, label = copy.signalLabel }: { buf: RefObject<RingBuf>; paused?: boolean; min?: number; max?: number; seconds?: number; label?: string }) {
+export function Waveform({ buf, paused = false, min = -2, max = 2, seconds = 5, label = copy.signalLabel, center = false }: { buf: RefObject<RingBuf>; paused?: boolean; min?: number; max?: number; seconds?: number; label?: string; center?: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const snapshot = new RingBuf(buf.current.capacity, buf.current.width)
@@ -30,12 +30,19 @@ export function Waveform({ buf, paused = false, min = -2, max = 2, seconds = 5, 
       }
       for (let i = 0; i <= seconds; i++) ctx.fillText(String(i - seconds), left + i * plot / seconds - 4, height - 2)
       const latest = data.last()?.t ?? 0
+      // Centering removes the gravity offset so a real sensor's axis stays on screen.
+      let offset = 0
+      if (center) {
+        let sum = 0, n = 0
+        data.forEach((t, row) => { if (t >= latest - seconds) { sum += row[0]; n++ } })
+        offset = n ? sum / n : 0
+      }
       ctx.strokeStyle = palette.getPropertyValue('--signal').trim(); ctx.lineWidth = 1.7; ctx.beginPath()
       let first = true
       data.forEach((t, row) => {
         if (t < latest - seconds) return
         const x = left + (t - latest + seconds) / seconds * plot
-        const y = 12 + (max - Math.max(min, Math.min(max, row[0]))) / (max - min) * (height - 36)
+        const y = 12 + (max - Math.max(min, Math.min(max, row[0] - offset))) / (max - min) * (height - 36)
         if (first) { ctx.moveTo(x, y); first = false } else ctx.lineTo(x, y)
       })
       ctx.stroke()
@@ -43,6 +50,6 @@ export function Waveform({ buf, paused = false, min = -2, max = 2, seconds = 5, 
     }
     draw()
     return () => cancelAnimationFrame(frame)
-  }, [buf, paused, min, max, seconds])
+  }, [buf, paused, min, max, seconds, center])
   return <canvas ref={canvas} role="img" aria-label={label} />
 }
