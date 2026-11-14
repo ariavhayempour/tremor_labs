@@ -1,0 +1,4 @@
+name: tremor-probe-leds
+icon: 💡
+description: Probe. Matrix shows 3, 2, 1, check; LED3 pins red, green, blue are driven HIGH one at a time.
+bricks: []

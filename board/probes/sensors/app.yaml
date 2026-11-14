@@ -1,0 +1,5 @@
+name: tremor-probe-sensors
+icon: 📏
+description: Probe. Reports Modulino Movement and Distance rates once a second over TCP 7700.
+ports: [7700]
+bricks: []
