@@ -350,6 +350,95 @@ ignored. It returns `None` ("building your baseline") when:
 |---|---|---|---|
 | `BASELINE_MIN_N` | 3 | entries | History needed before a percentage is shown |
 
+## Insights (`insights.py`)
+
+Pure functions over `Obs` rows. The endpoint layer builds the `Obs` from the DB: one per
+**done** test, with the check's context (`minutes_since_dose`, `created_at`, caffeine, sleep,
+stress, alcohol). `Obs.metric` depends on what the function reads:
+
+| Function | Reads | `metric` |
+|---|---|---|
+| `dose_response`, `factor_effects`, `daily_timeline` | `rest` only | `strength_ms2` (m/s²) |
+| `profile` | rest, posture, reach, tap | the Results-card metric: `strength_score` (rest, posture), `smoothness` mm (reach), `taps_per_sec` (tap) |
+
+A rest test therefore appears with `strength_ms2` in the first list and with `strength_score`
+in the profile list. Non-finite metrics are ignored everywhere.
+
+- **`dose_response(obs, bin_h, max_h)`:** `h = minutes_since_dose / 60`. Observations without a
+  dose, with `h < 0` or with `h ≥ max_h` are skipped. Bin `k` is `[k·bin_h, (k+1)·bin_h)`, so a
+  lower edge belongs to its own bin. Empty bins are omitted, the rest are sorted by `start_h`.
+- **`returns_after_h(bins, overall_median, min_count)`:** the `start_h` of the first bin (by
+  `start_h`) with `start_h ≥ RETURNS_MIN_H`, `count ≥ min_count` and `mean > overall_median`
+  (strictly), else `None`. The caller passes the median of the observations it binned.
+- **`factor_effects(obs)`:** mean rest strength per group, in the order caffeine yes/no,
+  sleep poor (≤ `POOR_SLEEP_MAX`) / ok, stress high (≥ `HIGH_STRESS_MIN`) / low, alcohol yes/no.
+  An unanswered factor (`None`) puts the observation in neither group. Empty groups are omitted.
+- **`profile(obs, now)`:** always four rows (rest, posture, reach, tap). The first week is
+  `[first, first + PROFILE_FIRST_DAYS)` where `first` is the earliest observation at or before
+  `now`. Current is `(now − PROFILE_CURRENT_DAYS, now]`. Observations after `now` are ignored.
+  With under 10 days of history the windows overlap. A value is `None` when its count is 0.
+- **`daily_timeline(obs, tz)`:** groups by `created_at.astimezone(tz).date()`, so the day
+  boundary is local midnight and DST-safe. One point per local day that has any observation,
+  oldest first. `count` is that day's rest observations and `mean_rest` is `None` when it is 0.
+  The endpoint pads days of the window that have no observations at all.
+- **`streak_days(check_dates, today)`:** consecutive local days with a check, counted back from
+  today. If today has no check yet, counting starts at yesterday, so the streak shown in the
+  morning is not 0. Dates after `today` are ignored.
+
+| Constant | Value | Units | Meaning |
+|---|---|---|---|
+| `DOSE_BIN_H` | 0.5 | h | Dose-response bin width |
+| `DOSE_MAX_H` | 6.0 | h | Upper edge of the last bin |
+| `RETURNS_MIN_COUNT` | 3 | observations | Samples a bin needs before it can mark the return |
+| `RETURNS_MIN_H` | 1.0 | h | Earliest bin that can mark the return |
+| `PROFILE_FIRST_DAYS` | 7 | days | First-week window from the first observation |
+| `PROFILE_CURRENT_DAYS` | 3 | days | Current window ending at `now` |
+| `POOR_SLEEP_MAX` | 2 | 1–5 scale | Sleep at or below this is "poor" |
+| `HIGH_STRESS_MIN` | 4 | 1–5 scale | Stress at or above this is "high" |
+
+## Demo seeder model (`seeding.py`)
+
+`generate(seed, days, end, tz)` is pure: it reads the clock only when `end` is `None` (today in
+`tz`). `tz=None` means the Mac's local zone. Day `end` is the last seeded day, inclusive, so on
+today some checks may be later than the current time. All datetimes are UTC-aware, converted
+from local wall times, so doses stay at 08:00/13:00/18:00 local across a DST change. One
+`numpy` generator seeded with `seed` drives every draw, in a fixed order.
+
+- **Doses:** each `DOSE_TIMES_LOCAL` time every day, with uniform ±`DOSE_JITTER_MIN` minutes.
+- **Checks:** 3 or 4 a day, uniform in `CHECK_WINDOW_LOCAL`, at least `CHECK_MIN_GAP_MIN`
+  apart. `dose_index` is the latest dose at or before the check; `minutes_since_dose` is exact
+  (checks before the first dose of the series have neither). Real check-ins cap the answer at
+  4 h, the seeder does not, so checks before 08:00 sit about 14 h after the last dose and fall
+  outside the dose-response bins.
+- **Daily factors:** caffeine on exactly `round(0.5·days)` random days, poor sleep (1–2) on
+  `round(0.3·days)`, alcohol on `round(0.2·days)`; the others sleep 3–5. Stress is uniform 1–5.
+  Exact counts instead of coin flips keep every factor group populated for the demo.
+- **Rest strength (m/s²):** `clean(h) × 1.2 (caffeine) × 1.1 (sleep ≤ 2) × lognormal(0, 0.12)`.
+  `clean(h) = 0.06 + 0.34·sigmoid((h − 3)/0.5)` for `h ≥ 1`. For `h < 1` it falls linearly from
+  the pre-dose value `clean(interval since the previous dose)` to 0.06. Before any dose it is
+  0.40.
+- **Posture:** 0.7 × the rest strength.
+- **Tremor fields:** `tremor_detected = strength ≥ RMS_MIN_MS2` (rest) or `≥ POSTURE_RMS_MIN_MS2`
+  (posture), imported from the analysis modules. `strength_score = strength_to_score(strength)`.
+  `peak_hz` is uniform 4.5–5.5 Hz when detected, else `None`. `valid_seconds` is
+  `30 − 2·TRIM_SECONDS` = 26 s for rest and uniform 22–30 s for posture.
+- **Reach and tap:** with `rel = rest / 0.4`: smoothness `2 + 4·rel` mm, wobble `1 + 1.5·rel`,
+  taps/s `4.2 − 0.8·rel`, amplitude `1.0 − 0.2·rel` (signal units), decrement uniform −0.15 to
+  −0.05, rhythm CV `0.08 + 0.1·rel`. Tap runs for both hands.
+- Every check has five tests, in order: rest, posture, reach (tested hand right), tap left,
+  tap right. `details` is `{}`, and there are no raw samples.
+
+**Seed 42, 14 days** (America/Chicago, ending 2026-11-14): 50 checks, 42 doses. Rest strength by
+bin (m/s², count): 0.0 h 0.378 (5), 0.5 h 0.129 (7), 1.0 h 0.069 (7), 1.5 h 0.098 (5),
+2.0 h 0.130 (5), 2.5 h 0.200 (5), 3.0 h 0.344 (2), 3.5 h 0.390 (2), 4.0 h 0.389 (4),
+4.5 h 0.416 (4). The median is 0.161, so `returns_after_h` is 2.5. Caffeine days read 1.19×
+(unmatched means 0.263 vs 0.221). Rest is detected in 31 of 50 checks and posture in 17.
+
+Over 200 seeds, `returns_after_h` is always 2.0–4.0 (mostly 2.5 or 3.0). The caffeine ratio
+within matched 0.5 h bins is 1.09–1.38 (5th–95th percentile), so the test's [1.12, 1.30] holds
+for seed 42 but not for every seed. The 1.1× sleep effect is smaller than the spread from check
+timing: with seed 42 the unmatched poor-sleep mean (0.227, n=13) is below ok (0.246, n=37).
+
 ## How to tune (against a real still hand)
 
 1. Record at least 5 rest tests of a still hand, using the rest protocol: the sensor lies flat in
