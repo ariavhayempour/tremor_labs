@@ -2,13 +2,20 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { copy } from '../copy'
 import { Icon } from '../components/Icon'
-import { availableStep, readSession, steps, storageKey } from '../check/checkSession'
+import { availableStep, defaultMode, readSession, steps, storageKey } from '../check/checkSession'
+import { dailyBars } from '../dashboard/format'
+import { useHomeTrends } from '../home/useHomeTrends'
 import { ActivityChart } from '../home/ActivityChart'
 import { HandComparison } from '../home/HandComparison'
 import { dateLabel, readHistory } from '../home/homeStore'
 export function Home() {
   const [history] = useState(readHistory)
-  const [session] = useState(readSession)
+  const [session] = useState(() => readSession(defaultMode))
+  const trends = useHomeTrends()
+  const live = trends.status === 'ready' ? trends.data : null
+  const sample = trends.status === 'fixtures'
+  const count = live ? live.summary.checks_completed : sample ? history.length : '—'
+  const latest = live ? live.latest : sample ? history[0].at : null
   const stage = availableStep(session)
   const resume = stage > 0 && stage < 5
   const next = resume ? steps[stage] : 'connect'
@@ -21,7 +28,7 @@ export function Home() {
       <ol className="home-test-steps">{steps.map((step, i) => <li key={step}><span className={`home-step-icon ${i < stage ? 'complete' : ''}`}><Icon name={i < stage ? 'check' : ['connect','rest','posture','reach','tap'][i]} size={20}/></span><div><strong>{copy.flow.steps[step].label}</strong><span>{copy.home.stepDetails[i]}</span></div><span className="home-step-index">{String(i + 1).padStart(2, '0')}</span></li>)}</ol>
       <div className="operate-bottom"><div className="home-preparation"><Icon name="sensor" size={17}/><span>{resume ? `${stage} ${copy.home.stepsComplete}` : copy.home.prepare}</span></div><Link className="home-primary" to={`/check/${next}`} onClick={prepareCheck}>{resume ? copy.home.resume : copy.home.start}<Icon name="arrow" size={20}/></Link></div>
     </section>
-    <section className="home-card trends-card" aria-labelledby="trends-title"><div className="home-card-heading"><span className="home-card-icon"><Icon name="dashboard" size={21}/></span><div><h2 id="trends-title">{copy.home.trends}</h2><p>{copy.home.trendsSubtitle}</p></div><span className="sample-badge">{copy.home.sampleHistory}</span></div><div className="home-history-numbers"><strong>{history.length}<span>{copy.home.checks}</span></strong><span>{copy.home.last14Days}<small>{copy.home.latest} {dateLabel(history[0].at)}</small></span></div><ActivityChart history={history}/><div className="home-trend-footer"><span>{copy.home.last7Days}</span><Link to="/dashboard" className="home-text-link">{copy.home.openHistory}<Icon name="arrow" size={17}/></Link></div></section>
-    <HandComparison/>
+    <section className="home-card trends-card" aria-labelledby="trends-title"><div className="home-card-heading"><span className="home-card-icon"><Icon name="dashboard" size={21}/></span><div><h2 id="trends-title">{copy.home.trends}</h2><p>{copy.home.trendsSubtitle}</p></div>{sample && <span className="sample-badge">{copy.home.sampleHistory}</span>}</div><div className="home-history-numbers"><strong>{count}<span>{copy.home.checks}</span></strong><span>{copy.home.last14Days}{latest && <small>{copy.home.latest} {dateLabel(latest)}</small>}</span></div><ActivityChart history={sample ? history : []} data={live ? dailyBars(live.summary.daily.slice(-7)) : sample ? undefined : []}/><div className="home-trend-footer"><span>{copy.home.last7Days}</span><Link to="/dashboard" className="home-text-link">{copy.home.openHistory}<Icon name="arrow" size={17}/></Link></div></section>
+    {(sample || live) && <HandComparison live={live?.hands}/>}
   </div>
 }

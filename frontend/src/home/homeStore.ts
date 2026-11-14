@@ -33,8 +33,8 @@ export function recordCompletedCheck() {
     if (saveLocal(historyKey, [entry, ...readHistory()])) sessionStorage.setItem('tremor-history-recorded', '1')
   } catch { /* A completed check remains visible in its summary if storage is unavailable. */ }
 }
-export const dateLabel = (at: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' }).format(new Date(at))
-export const timeLabel = (at: string) => new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }).format(new Date(at))
+export const dateLabel = (at: string) => new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(new Date(at))
+export const timeLabel = (at: string) => new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(new Date(at))
 export function dailyCounts(history: HistoryEntry[], days = 7) {
   return Array.from({ length: days }, (_, i) => {
     const day = new Date(); day.setDate(day.getDate() - (days - 1 - i))
