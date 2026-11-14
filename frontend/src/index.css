@@ -174,3 +174,18 @@ footer { display: flex; align-items: center; justify-content: center; gap: 8px; 
 .result-card.is-failed .result-value, .result-card.is-missing .result-value { font-size: 20px; color: var(--muted, #66819d); }
 .result-baseline { margin: 0; font-weight: 600; }
 .results-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.report-page, .settings-page { display: grid; gap: 20px; max-width: 900px; }
+.report-header { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 12px; }
+.report-meta { display: flex; flex-wrap: wrap; gap: 24px; margin: 0; }
+.report-meta dt { font-size: 12px; color: var(--muted, #66819d); }
+.report-meta dd { margin: 0; font-weight: 600; }
+.report-section table, .report-page table { width: 100%; border-collapse: collapse; }
+.report-page th, .report-page td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+.report-page .dose-chart { height: 240px; }
+.settings-form { display: grid; gap: 14px; }
+.settings-form label { display: grid; gap: 6px; }
+.settings-form input, .settings-form select { min-height: 44px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 16px; }
+.settings-form fieldset { display: grid; gap: 10px; border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+.settings-form .checkbox-row { display: flex; align-items: center; gap: 8px; }
+.band-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media print { .no-print, header.topbar, footer .no-print { display: none !important; } .app main { padding: 0; } }

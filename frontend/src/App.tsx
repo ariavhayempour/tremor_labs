@@ -12,6 +12,8 @@ import { useSensorStream } from './api/useSensorStream'
 import { defaultSim } from './api/types'
 import { USE_FIXTURES, getSim } from './api/client'
 import { Results } from './results/Results'
+import { Report } from './report/Report'
+import { Settings } from './settings/Settings'
 export default function App() {
   const [params, setParams] = useState(defaultSim)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -52,7 +54,7 @@ export default function App() {
           </div>
         </div>
       </header>
-      <main><Routes><Route path="/dev" element={<DevPanel params={params} onChange={setParams} stream={stream}/>}/><Route path="/results/:checkId" element={<Results/>}/>{[['/dashboard', copy.nav.dashboard], ['/report', copy.nav.report], ['/settings', copy.nav.settings]].map(([path, title]) => <Route key={path} path={path} element={<Placeholder title={title}/>}/>)}<Route path="*" element={<Placeholder title={copy.notFound}/>}/></Routes><footer><Icon name="shield" size={16}/>{copy.footer}</footer></main>
+      <main><Routes><Route path="/dev" element={<DevPanel params={params} onChange={setParams} stream={stream}/>}/><Route path="/results/:checkId" element={<Results/>}/>{!USE_FIXTURES && <><Route path="/report" element={<Report/>}/><Route path="/settings" element={<Settings/>}/></>}{(USE_FIXTURES ? [['/dashboard', copy.nav.dashboard], ['/report', copy.nav.report], ['/settings', copy.nav.settings]] : [['/dashboard', copy.nav.dashboard]]).map(([path, title]) => <Route key={path} path={path} element={<Placeholder title={title}/>}/>)}<Route path="*" element={<Placeholder title={copy.notFound}/>}/></Routes><footer><Icon name="shield" size={16}/>{copy.footer}</footer></main>
     </div>
   )
 }
