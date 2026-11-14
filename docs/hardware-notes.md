@@ -185,3 +185,24 @@ The build then installs from `~/.arduino15/staging/libraries/` ("already downloa
 
 - After the probes the board was taken off Wi-Fi again: `nmcli con down tremor-hotspot`, with autoconnect disabled.
 - To get online again for new library downloads: `adb shell nmcli con up tremor-hotspot`, then `arduino-cli lib download ...` as described above.
+
+## Production app (`board/tremorlab`), measured 2026-11-14
+
+- **`Bridge.notify` blocks the sketch while the serial link sends** (about 115200 baud).
+  - A 70-int batch every 100 ms stalled `loop()` for about 26 ms. The IMU lost about 12 samples/s (88/s, gaps up to 26 ms).
+  - **Fix:** one sample per message (`imu` = 7 ints, `tof` = 2 ints). Measured: **IMU 100.0/s and ToF 50.0/s exactly** (status counts 100/50 every second). Sorted by MCU time, IMU spacing is 9.4–10.7 ms (std 0.55 ms), with no duplicates.
+- **Out-of-order delivery:** the board's Python side handles Bridge callbacks on several threads, so about 0.5% of messages arrive one position late. `BoardSource` reorders them by MCU timestamp inside a short window. Never trust arrival order.
+- **Build quirks on `arduino:zephyr` 0.51.0:**
+  - `std::vector::reserve()` fails to link (`multiple definition of std::__throw_length_error`, which clashes with the core's `abi.cpp`). Don't call it; `push_back`, `clear` and `assign` link fine.
+  - `lroundf` (libm) is not linked. Round by hand.
+- **Bridge callbacks on the MCU** (`Bridge.provide`) run on another thread. They only record the command; `loop()` draws on the matrix. This follows the official matrix examples, none of which uses `provide_safe`.
+- **LED cue sequence verified by eye (2026-11-14):** countdown 7 and 23, hold, recording 1 (blue), check, recording 0 (green), idle (breathing), clear.
+- **Status is sent as an int code** (0 ok, 1 movement_missing, 2 distance_missing, 3 both_missing). The relay maps it to the contract string, so the sketch only ever sends ints, which is what the probes proved.
+- **ToF is sampled at a fixed 20 ms** (50/s) with `available()`/`get()`. A reading can repeat the previous mm value (the stale-result caveat). Accepted: the repeats are real "latest reading" samples, spaced 20 ms apart.
+
+## Recovery: Bridge router stuck
+
+- **Symptom:** an app starts, the relay accepts the Mac's TCP connection, but **no** imu/tof/status lines arrive, not even from a probe that worked before.
+- **Router logs:** `journalctl -u arduino-router.service` shows `ERROR Error in connection err="invalid packet, expected array, got: int8"` around flashes. Its serial stream to the MCU (`/dev/ttyHS1`) had lost sync.
+- **Fix:** power-cycle the board (unplug USB, wait 5 s, re-plug, wait about 40 s) or `sudo systemctl restart arduino-router.service`.
+- The `invalid packet` line appears on every flash and is usually harmless. The stuck state was seen once, after many flashes in a row.
