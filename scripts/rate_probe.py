@@ -5,7 +5,7 @@ import json
 import sys
 import time
 
-from websockets.sync.client import connect
+from websockets.sync.client import ClientConnection, connect
 
 
 def main() -> int:
@@ -18,11 +18,16 @@ def main() -> int:
     except OSError as e:
         print(f"cannot connect to {args.url}: {e} (is `make dev` running?)")
         return 1
+    with ws:
+        return _stream(ws, args.seconds)
+
+
+def _stream(ws: ClientConnection, seconds: float) -> int:
     start = tick = time.monotonic()
     imu_n = tof_n = 0
     lags: list[float] = []
     try:
-        while not args.seconds or time.monotonic() - start < args.seconds:
+        while not seconds or time.monotonic() - start < seconds:
             try:
                 msg = json.loads(ws.recv(timeout=1.0))
             except TimeoutError:
@@ -46,8 +51,6 @@ def main() -> int:
                 tick = now
     except KeyboardInterrupt:
         pass
-    finally:
-        ws.close()
     return 0
 
 
