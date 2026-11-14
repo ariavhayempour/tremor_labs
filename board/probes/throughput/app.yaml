@@ -1,0 +1,5 @@
+name: tremor-probe-throughput
+icon: 📦
+description: Probe. Sends int vectors of growing size at 10 Hz; Python reports how many arrived per size over TCP 7700.
+ports: [7700]
+bricks: []
