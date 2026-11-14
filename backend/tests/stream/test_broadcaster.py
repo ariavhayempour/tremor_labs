@@ -1,9 +1,18 @@
 import asyncio
+import dataclasses
+from collections.abc import AsyncIterator
 
 import numpy as np
 
 from tremorlab.config import SimParams
-from tremorlab.sources.base import Batch, ImuBatch, SourceStatus, TofBatch
+from tremorlab.sources.base import (
+    Batch,
+    ImuBatch,
+    LedCommand,
+    SourceHealth,
+    SourceStatus,
+    TofBatch,
+)
 from tremorlab.sources.simulated import SimulatedSource
 from tremorlab.stream.broadcaster import MAX_QUEUE, Broadcaster
 
@@ -120,3 +129,56 @@ def test_run_consumes_source_batches() -> None:
         return q.qsize()
 
     assert asyncio.run(go()) >= 10
+
+
+class StubHealthSource:
+    """Health is whatever the test sets; batches are fed through dispatch()."""
+
+    name = "board"
+
+    def __init__(self) -> None:
+        self.state = SourceHealth(True, {"movement": True, "distance": True}, 99.7, 50.0)
+
+    async def start(self) -> None:
+        return None
+
+    async def stop(self) -> None:
+        return None
+
+    async def batches(self) -> AsyncIterator[Batch]:
+        return
+        yield  # makes this an async generator
+
+    async def led(self, command: LedCommand, value: int | None) -> None:
+        return None
+
+    def health(self) -> SourceHealth:
+        return self.state
+
+
+def test_source_not_republished_for_small_rate_wobble() -> None:
+    now = [0.0]
+    source = StubHealthSource()
+    b = Broadcaster(source, clock=lambda: now[0])
+    q = b.subscribe()
+
+    def tick(**changes: object) -> list[dict[str, object]]:
+        source.state = dataclasses.replace(source.state, **changes)  # type: ignore[arg-type]
+        now[0] += 1.0
+        b.dispatch(imu(now[0]))
+        msgs = [q.get_nowait() for _ in range(q.qsize())]
+        return [m for m in msgs if m["type"] == "source"]
+
+    assert len(tick()) == 1  # first check announces health
+    assert tick(imu_hz=100.2) == []
+    assert tick(imu_hz=99.1, tof_hz=48.0) == []
+    assert tick(imu_hz=104.0) == []  # 4.3% from the last published 99.7
+    [m] = tick(imu_hz=105.0)
+    assert m["imu_hz"] == 105.0
+    [m] = tick(tof_hz=None)
+    assert m["tof_hz"] is None
+    [m] = tick(connected=False)
+    assert m["connected"] is False
+    [m] = tick(sensors_detected={"movement": True, "distance": False})
+    assert m["sensors"] == {"movement": True, "distance": False}
+    assert tick() == []

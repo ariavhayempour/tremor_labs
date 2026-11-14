@@ -40,7 +40,7 @@ HEALTH_WINDOW_S = 5.0
 SENSORS = {"movement": True, "distance": True}
 
 
-def _measured_rate(ts: deque[float]) -> float | None:
+def measured_rate(ts: deque[float]) -> float | None:
     """Samples per second over the last HEALTH_WINDOW_S of timestamps, None if unknown."""
     if len(ts) < 2:
         return None
@@ -126,8 +126,8 @@ class SimulatedSource:
         return SourceHealth(
             connected=True,
             sensors_detected=dict(SENSORS),
-            imu_hz=_measured_rate(self._imu_ts),
-            tof_hz=_measured_rate(self._tof_ts),
+            imu_hz=measured_rate(self._imu_ts),
+            tof_hz=measured_rate(self._tof_ts),
         )
 
     def _next_batches(self) -> tuple[ImuBatch, TofBatch]:

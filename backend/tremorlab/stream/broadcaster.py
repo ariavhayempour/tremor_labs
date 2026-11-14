@@ -16,8 +16,24 @@ IMU_RING_CAPACITY = 3000
 TOF_RING_CAPACITY = 1500
 MAX_QUEUE = 100
 SOURCE_CHECK_S = 1.0
+RATE_CHANGE_FRACTION = 0.05
 
 log = logging.getLogger(__name__)
+
+
+def _rate_moved(old: float | None, new: float | None) -> bool:
+    if old is None or new is None:
+        return old is not new
+    return abs(new - old) > RATE_CHANGE_FRACTION * abs(old)
+
+
+def source_changed(last: Message | None, new: Message) -> bool:
+    """Link, sensors or source changed, or a measured rate moved > RATE_CHANGE_FRACTION."""
+    if last is None:
+        return True
+    if any(last[k] != new[k] for k in ("sensor_source", "connected", "sensors")):
+        return True
+    return any(_rate_moved(last[k], new[k]) for k in ("imu_hz", "tof_hz"))
 
 
 class Broadcaster:
@@ -60,7 +76,7 @@ class Broadcaster:
             self._publish_source()
         if self._clock() - self._source_checked >= SOURCE_CHECK_S:
             self._source_checked = self._clock()
-            if self.source_message() != self._last_source:
+            if source_changed(self._last_source, self.source_message()):
                 self._publish_source()
         if self._listener is not None:
             try:
@@ -72,7 +88,7 @@ class Broadcaster:
         return source_msg(self.source.health(), self.source.name)
 
     def _publish_source(self) -> None:
-        """Health changes (link, sensors, measured rates) reach clients at most once a second."""
+        """Publish current health; also the reference that later changes are measured from."""
         self._last_source = self.source_message()
         self._source_checked = self._clock()
         self.publish(self._last_source)

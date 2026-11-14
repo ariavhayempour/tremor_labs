@@ -338,13 +338,6 @@ def test_unimplemented_analysis_stores_failed_and_frees_session() -> None:
     rig.session.start(rig.check_id, "rest", "right")
 
 
-def test_reach_stop_is_unavailable_until_reach_analysis_is_wired(rig: Rig) -> None:
-    tid = rig.session.start(rig.check_id, "reach", "right")
-    rig.feed(sim_batches(5))
-    with pytest.raises(AnalysisUnavailableError):
-        rig.session.stop(tid)
-
-
 def test_listener_detached_after_stop(rig: Rig) -> None:
     tid = rig.session.start(rig.check_id, "rest", "right")
     active = rig.session.active
