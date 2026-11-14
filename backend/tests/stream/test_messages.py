@@ -96,3 +96,15 @@ def test_source_msg_shape() -> None:
         "imu_hz": 100.2,
         "tof_hz": None,
     }
+
+
+def test_tof_msg_carries_per_sample_offsets_across_dropped_readings() -> None:
+    t = np.array([100.0, 100.025, 100.05, 100.075])
+    m = tof_msg(TofBatch(t=t, mm=np.array([200.0, np.nan, 202.0, 203.0])))
+    assert m["t0"] == 100.0 and m["samples_mm"] == [200.0, 202.0, 203.0]
+    assert m["t"] == pytest.approx([0.0, 0.05, 0.075])
+
+
+def test_tof_msg_all_invalid_has_empty_offsets() -> None:
+    m = tof_msg(TofBatch(t=np.array([1.0, 1.025]), mm=np.array([np.nan, np.nan])))
+    assert m["t"] == [] and m["samples_mm"] == []

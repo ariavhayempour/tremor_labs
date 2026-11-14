@@ -14,6 +14,9 @@ UNKNOWN_FS_HZ = 1.0  # any positive rate is exact for a one-sample batch
 Message = dict[str, Any]
 
 
+TOF_OFFSET_DECIMALS = 6  # microsecond resolution keeps the JSON small
+
+
 def batch_fs(t: NDArray[np.float64], fallback: float | None = None) -> float:
     """Effective rate in Hz of one batch, (N-1)/span from its timestamps (s)."""
     if len(t) >= 2:
@@ -39,13 +42,15 @@ def imu_msg(b: ImuBatch, *, fallback_fs: float | None = None) -> Message:
 
 
 def tof_msg(b: TofBatch, *, fallback_fs: float | None = None) -> Message:
-    """Distance in mm with non-finite readings dropped."""
+    """Distance in mm with non-finite readings dropped; t holds per-sample offsets from t0 in s."""
     valid = np.isfinite(b.mm)
     t, mm = b.t[valid], b.mm[valid]
+    t0 = float(t[0]) if len(t) else float(b.t[0]) if len(b.t) else 0.0
     return {
         "type": "tof",
-        "t0": float(t[0]) if len(t) else float(b.t[0]) if len(b.t) else 0.0,
+        "t0": t0,
         "fs": batch_fs(t, fallback_fs),
+        "t": np.round(t - t0, TOF_OFFSET_DECIMALS).tolist(),
         "samples_mm": mm.tolist(),
     }
 
