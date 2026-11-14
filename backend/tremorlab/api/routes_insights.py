@@ -55,7 +55,7 @@ def window(request: Request, days: int) -> Window:
     return Window(datetime.combine(first, time(), tzinfo=tz).astimezone(UTC), now, tz)
 
 
-def _conn(request: Request) -> sqlite3.Connection:
+def db_conn(request: Request) -> sqlite3.Connection:
     conn: sqlite3.Connection = request.app.state.conn
     return conn
 
@@ -144,7 +144,7 @@ def bins_out(bins: Sequence[insights.Bin]) -> list[schemas.Bin]:
 
 @router.get("/dose-response")
 async def dose_response(request: Request, days: int = DAYS) -> schemas.DoseResponseOut:
-    conn, w = _conn(request), window(request, days)
+    conn, w = db_conn(request), window(request, days)
     rest = rest_strength_obs(load(conn, w))
     bins = insights.dose_response(rest)
     return schemas.DoseResponseOut(
@@ -160,12 +160,12 @@ async def dose_response(request: Request, days: int = DAYS) -> schemas.DoseRespo
 @router.get("/profile")
 async def profile(request: Request, days: int = DAYS) -> list[schemas.ProfileRow]:
     w = window(request, days)
-    return profile_rows(load(_conn(request), w), w)
+    return profile_rows(load(db_conn(request), w), w)
 
 
 @router.get("/summary")
 async def summary(request: Request, days: int = DAYS) -> schemas.InsightsSummary:
-    conn, w = _conn(request), window(request, days)
+    conn, w = db_conn(request), window(request, days)
     rest = rest_strength_obs(load(conn, w))
     completed = queries.completed_check_times(conn, None, w.now)
     check_dates = sorted({t.astimezone(w.tz).date() for t in completed})
