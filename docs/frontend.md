@@ -28,8 +28,40 @@ npx --yes pnpm test:e2e
 
 Five unit tests cover copy restrictions, footer, buffer ordering/clearing, reconnection delays, and API error handling. Two browser tests cover navigation, waveform pixels, simulator changes/reset, and mobile overflow/navigation.
 
+## Backend integration
+
+The app has two modes. They share every screen, but the data comes from different places.
+
+| | Fixture mode (`VITE_USE_FIXTURES=1`) | Live mode (default) |
+|---|---|---|
+| Check flow | "Demo mode" runs a simulated check locally and records nothing | "Sensor mode" (the default) records on the backend |
+| Home trends, dashboard | Sample data, labeled as such | `/api/insights/*` and `GET /api/checks?details=false` |
+| Settings | Saved in the browser | `GET/PUT /api/settings` (the hand also syncs from the Settings dialog) |
+| Report | Placeholder | `GET /api/report` |
+
+The Playwright suite runs in fixture mode, so it needs no backend.
+
+### Sensor mode check flow
+
+1. **Connect:** `GET /api/health` reports the board link and both sensors. The medication question then creates the check (`POST /api/checks`). Its choices are Just now, 30 min, 1–4 h and Not yet; they map to `now`, `hours_ago` and `not_yet`. The tested hand comes from `/api/settings`.
+2. **Rest:** a 30 s recording on the wall clock.
+3. **Posture:** runs until there are 30 s of in-band time, taken from `position.valid_seconds`. It gives up after 75 s, and the backend needs at least 20 s.
+4. **Reach:** a single recording. The app sends `POST /api/tests/{id}/mark` before attempts 2 and 3. On the simulator, each attempt also sends `PUT /api/sim {"action": "descent"}`.
+5. **Tap:** isn't connected yet (MediaPipe), so sensor mode offers **Skip this step**. A skipped step shows as "Skipped" on Results.
+6. **Results:** `/results/:checkId` reads `GET /api/checks/{id}`.
+
+Every test step stops on a link drop (a `source` message with `connected: false`). A failed test shows friendly copy for its `fail_reason` with a Try again button, and any test step can be skipped. LED cues follow the map in `docs/demo.md` and are best effort.
+
+Code map:
+- `src/api/types.ts` mirrors `docs/contracts.md`. `src/api/wsMessages.ts` validates every `/ws` frame.
+- `src/api/useSensorStream.ts` keeps samples in refs: IMU, ToF, spectrum and position. Only the link state is React state.
+- `src/check/useLiveTest.ts` handles test timing.
+- `src/check/LiveCheckPage.tsx` holds the sensor-mode test steps. The connect step stays in `CheckPage.tsx` for both modes.
+- `src/dashboard/`, `src/results/`, `src/report/` and `src/settings/` are the data screens.
+
 ## Remaining work
 
-This is the frontend portion of the initial scaffold milestone, not the full application. The repository has no backend, Makefile, or `docs/contracts.md`; backend integration is unverified. Types and simulator field names are provisional based on the supplied plan. Align them with the partner's contract before integration. Synthetic fixture generation is currently in the streaming hook rather than contract-derived JSON.
-
-The check flow, spectrum, posture/reach gating, MediaPipe tap recording, persisted results, dashboard, printable report, and settings are subsequent milestones. Their routes show explicit development placeholders. The check-in route previews the routine; it does not create or record a check. Recharts and MediaPipe are installed but not loaded. Shared styling uses Tailwind v4 and custom CSS; shadcn component extraction and remaining design-system work are outstanding. No cloud publication or repository commits were performed.
+- **Tap recording:** MediaPipe hand landmarks posted to `POST /api/tests/{id}/tap-data`. The model and WASM must be served from `frontend/public/`.
+- **A live-backend Playwright run:** I1 and I3 need the smoke tests to pass against `make dev` without fixtures.
+- **Error states:** a reconnect banner outside the check flow.
+- **Design:** shadcn component extraction and the rest of the design-system work.
