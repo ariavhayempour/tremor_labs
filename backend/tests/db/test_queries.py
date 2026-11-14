@@ -6,7 +6,7 @@ import pytest
 
 from tremorlab.db import queries as q
 from tremorlab.db.connection import connect
-from tremorlab.db.models import CheckRow, DoseRow, ResultRow
+from tremorlab.db.models import CheckRow, DoseRow, ResultRow, TestType
 
 T0 = datetime(2026, 11, 14, 15, 0, 0, tzinfo=UTC)
 
@@ -257,3 +257,36 @@ def test_foreign_key_enforced(mem_conn: sqlite3.Connection) -> None:
     conn = connect(":memory:")
     with pytest.raises(sqlite3.IntegrityError):
         q.insert_result(conn, 999, ResultRow())
+
+
+def test_latest_replayable_tests_needs_all_types_with_raw(mem_conn: sqlite3.Connection) -> None:
+    def check(at: datetime) -> int:
+        return q.insert_check(
+            mem_conn,
+            created_at=at,
+            minutes_since_dose=None,
+            caffeine=None,
+            sleep_quality=None,
+            stress=None,
+            alcohol=None,
+            notes=None,
+            dose_id=None,
+        )
+
+    def test(check_id: int, kind: TestType, *, raw: bool = True, done: bool = True) -> int:
+        at = datetime(2026, 11, 14, tzinfo=UTC)
+        tid = q.insert_test(mem_conn, check_id=check_id, type=kind, hand="right", started_at=at)
+        if raw:
+            q.insert_raw(mem_conn, tid, "imu", {"t0": 0.0, "fs": 100.0, "samples": []})
+        q.finish_test(mem_conn, tid, ended_at=at, status="done" if done else "failed")
+        return tid
+
+    assert q.latest_replayable_tests(mem_conn) == []
+    old = check(datetime(2026, 11, 13, tzinfo=UTC))
+    expected = [test(old, "rest"), test(old, "posture"), test(old, "reach")]
+    new = check(datetime(2026, 11, 14, tzinfo=UTC))
+    test(new, "rest")
+    test(new, "posture")
+    test(new, "reach", raw=False)
+    test(new, "reach", done=False)
+    assert q.latest_replayable_tests(mem_conn) == expected

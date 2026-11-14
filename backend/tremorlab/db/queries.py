@@ -333,3 +333,25 @@ def results_history(
         sql += " LIMIT ?"
         args.append(limit)
     return [(_check_row(r), _result_row(r)) for r in conn.execute(sql, args)]
+
+
+def latest_replayable_tests(
+    conn: sqlite3.Connection, types: tuple[TestType, ...] = ("rest", "posture", "reach")
+) -> list[int]:
+    """Per type, the latest done test with raw samples from the newest check having all types."""
+    marks = ", ".join("?" for _ in types)
+    rows = conn.execute(
+        "SELECT t.check_id, t.type, MAX(t.id) AS test_id FROM tests t"
+        " JOIN checks c ON c.id = t.check_id"
+        f" WHERE t.status = 'done' AND t.type IN ({marks})"
+        " AND EXISTS (SELECT 1 FROM raw_samples r WHERE r.test_id = t.id)"
+        " GROUP BY t.check_id, t.type ORDER BY c.created_at DESC, c.id DESC",
+        types,
+    )
+    per_check: dict[int, dict[str, int]] = {}
+    for r in rows:
+        per_check.setdefault(r["check_id"], {})[r["type"]] = r["test_id"]
+    for found in per_check.values():
+        if all(kind in found for kind in types):
+            return [found[kind] for kind in types]
+    return []
