@@ -29,7 +29,7 @@ export function CheckFlow({ stream }: { stream: SensorStream }) {
       : step === 'results' ? <CheckResults session={session}/>
       : session.mode === 'sensor' && current !== 'connect'
         ? <LiveCheckPage key={step} step={current} session={session} stream={stream}
-            onDone={completeStep} onSkip={() => setSession(s => skipStep(s, current))}/>
+            onDone={completeStep} onTapDone={() => setSession(s => finishRun(s, 'tap'))} onSkip={() => setSession(s => skipStep(s, current))}/>
         : <CheckPage key={step} step={current} session={session} stream={stream} onMode={changeMode}
             onConnect={(checkId, hand, minutes) => setSession(s => connectCheck(s, checkId, hand, minutes))}
             onFinish={(samples?: SignalPoint[]) => setSession(s => finishRun(s, current, samples))}/>}

@@ -47,7 +47,7 @@ The Playwright suite runs in fixture mode, so it needs no backend.
 2. **Rest:** a 30 s recording on the wall clock.
 3. **Posture:** runs until there are 30 s of in-band time, taken from `position.valid_seconds`. It gives up after 75 s, and the backend needs at least 20 s.
 4. **Reach:** a single recording. The app sends `POST /api/tests/{id}/mark` before attempts 2 and 3. On the simulator, each attempt also sends `PUT /api/sim {"action": "descent"}`.
-5. **Tap:** isn't connected yet (MediaPipe), so sensor mode offers **Skip this step**. A skipped step shows as "Skipped" on Results.
+5. **Tap:** allow camera access, then record the left and right hand for 10 seconds each after a 3-second countdown. MediaPipe runs locally and sends landmarks to the existing tap-data endpoint. Retry failed recordings or skip the step; successful hands are saved independently.
 6. **Results:** `/results/:checkId` reads `GET /api/checks/{id}`.
 
 Every test step stops on a link drop (a `source` message with `connected: false`). A failed test shows friendly copy for its `fail_reason` with a Try again button, and any test step can be skipped. LED cues follow the map in `docs/demo.md` and are best effort.
@@ -61,7 +61,23 @@ Code map:
 
 ## Remaining work
 
-- **Tap recording:** MediaPipe hand landmarks posted to `POST /api/tests/{id}/tap-data`. The model and WASM must be served from `frontend/public/`.
+- **Tap recording implemented:** MediaPipe landmarks 0, 4, 8, 9 are posted to `POST /api/tests/{id}/tap-data`; absent hands produce null landmarks. Video is not uploaded. The backend remains authoritative for tap metrics.
 - **A live-backend Playwright run:** I1 and I3 need the smoke tests to pass against `make dev` without fixtures.
 - **Error states:** a reconnect banner outside the check flow.
 - **Design:** shadcn component extraction and the rest of the design-system work.
+
+## Local MediaPipe setup
+
+The webcam demo and model are copied into `tools/mediapipe/`. In `frontend/`,
+run `npm run setup:mediapipe` to copy the model and installed package's WASM
+into `public/mediapipe/` (ignored generated assets). Both `npm run dev` and
+`npm run build` do this automatically. Use localhost or HTTPS for camera access.
+Camera permission is requested only when starting a real tap recording; demo
+mode stays simulated. Leaving the step releases the camera and closes unfinished
+tap tests with an empty frame submission. Completed left-hand progress survives
+refresh before recording the right hand. The UI tap counter is feedback only.
+
+Manual hardware check: start a sensor check, reach Tap, allow the camera, and
+record each hand. Confirm the landmark overlay, tap counter, and backend result.
+Browser automation checks camera lifecycle and request contracts, but cannot
+validate tracking accuracy on a person's hand.

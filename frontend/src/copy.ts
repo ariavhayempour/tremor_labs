@@ -30,6 +30,14 @@ export const copy = {
   reset: 'Reset simulator', saved: 'Simulator updated', error: 'Could not update the simulator. Please try again.',
   descent: 'Trigger descent', descentStarted: 'Descent started',
   spectrum: { label: 'Live frequency spectrum of the movement signal', title: 'Rhythm (Hz)', peak: 'Peak', noPeak: 'No clear rhythm yet', waiting: 'The rhythm view appears while recording' },
+  tap: {
+    loading: 'Opening camera…', getReady: 'Get ready', preview: 'Live hand camera preview', taps: 'taps detected',
+    local: 'Camera processing stays on this device. Only hand landmarks go to the local service.',
+    moveIntoLight: 'Move your hand into the light and keep your wrist and fingertips in view.',
+    cameraDenied: 'Camera unavailable. Allow camera access and close other camera apps, then try again or skip.',
+    setupError: 'Could not load hand tracking. Run npm run setup:mediapipe, check camera access, then try again or skip.',
+    trackingError: 'Hand tracking stopped. Try again or skip this step.',
+  },
   sensorCheck: {
     notice: 'Recording with your sensors · Results stay on this laptop',
     checkIn: 'When did you last take your medication?', checkInHelp: 'This lets your trends compare checks at similar times after a dose.',
@@ -42,7 +50,6 @@ export const copy = {
     testingHand: 'Testing hand', recordingAttempt: 'Recording attempt', betweenAttempts: 'Lift your fingertip back to the starting height, then start the next attempt.',
     noReading: 'Hold your hand over the distance sensor', tooLow: 'Raise your hand a little', tooHigh: 'Lower your hand a little', inBand: 'In range · hold steady',
     target: 'Target', inBandTime: 'in range',
-    tapPending: 'Camera tap recording is not connected yet. Skip this step for now; your other results are saved.',
     viewResults: 'View your results',
     errors: {
       test_active: 'Another recording is still running. Wait a moment, then try again.',
