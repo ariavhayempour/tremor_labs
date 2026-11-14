@@ -135,7 +135,11 @@ Response **201** `CheckCreated`:
 
 ### `GET /api/checks`
 
-Query: `from`, `to` (ISO-8601, both optional and inclusive). Response: `CheckOut[]`, newest first.
+Query:
+- `from`, `to` (ISO-8601, both optional and inclusive).
+- `details` (boolean, default `true`). With `details=false`, every `result.details` is `{}` and all the metric fields stay. Use it for lists and the dashboard: the curves are about 35 KB per check. The Results screen keeps using `GET /api/checks/{check_id}`, which always includes them.
+
+Response: `CheckOut[]`, newest first.
 
 `CheckOut`:
 ```json
