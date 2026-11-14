@@ -55,10 +55,13 @@ async def list_checks(
     request: Request,
     from_: datetime | None = Query(default=None, alias="from"),
     to: datetime | None = None,
+    details: bool = True,
 ) -> list[CheckOut]:
     conn = _session(request).conn
     rows = reversed(queries.list_checks(conn, from_, to))
-    return [to_check_out(conn, c, queries.tests_for_check(conn, c.id)) for c in rows]
+    return [
+        to_check_out(conn, c, queries.tests_for_check(conn, c.id), details=details) for c in rows
+    ]
 
 
 @router.get("/checks/{check_id}", responses=NOT_FOUND)

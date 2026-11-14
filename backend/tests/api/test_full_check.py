@@ -279,3 +279,24 @@ def test_full_check_end_to_end(config: Config) -> None:
         conn = h.client.app.state.conn  # type: ignore[attr-defined]
         assert all(q.get_result(conn, tid) is not None for tid in ids)
         assert all(q.raw_for_test(conn, tid) for tid in ids[:3])
+
+
+def test_list_checks_details_false_omits_curves_keeps_metrics(h: Harness) -> None:
+    check_id = h.check()
+    run_rest(h, check_id)
+
+    [full] = h.client.get("/api/checks").json()
+    assert full["tests"][0]["result"]["details"]["freqs"]  # curves by default
+
+    [lean] = h.client.get("/api/checks", params={"details": "false"}).json()
+    result = lean["tests"][0]["result"]
+    assert result["details"] == {}
+    assert result["strength_score"] == full["tests"][0]["result"]["strength_score"]
+
+    one = h.client.get(f"/api/checks/{check_id}").json()
+    assert one["check"]["tests"][0]["result"]["details"]["freqs"]  # single check keeps curves
+
+
+def test_list_checks_rejects_bad_details_flag(h: Harness) -> None:
+    r = h.client.get("/api/checks", params={"details": "maybe"})
+    assert r.status_code == 422 and r.json()["error"] == "validation_error"

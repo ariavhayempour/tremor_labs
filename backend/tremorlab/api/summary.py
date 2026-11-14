@@ -1,5 +1,6 @@
 """Builds CheckOut and the Results-screen cards from stored checks, tests and results."""
 
+import dataclasses
 import sqlite3
 
 from tremorlab.analysis import baseline
@@ -17,8 +18,10 @@ CARD_METRICS: dict[TestType, tuple[str, str]] = {
 }
 
 
-def to_test_out(conn: sqlite3.Connection, t: TestRow) -> TestOut:
+def to_test_out(conn: sqlite3.Connection, t: TestRow, *, details: bool = True) -> TestOut:
     result = queries.get_result(conn, t.id)
+    if result is not None and not details:
+        result = dataclasses.replace(result, details={})  # metrics only; curves are bulky
     return TestOut(
         id=t.id,
         type=t.type,
@@ -29,7 +32,9 @@ def to_test_out(conn: sqlite3.Connection, t: TestRow) -> TestOut:
     )
 
 
-def to_check_out(conn: sqlite3.Connection, c: CheckRow, tests: list[TestRow]) -> CheckOut:
+def to_check_out(
+    conn: sqlite3.Connection, c: CheckRow, tests: list[TestRow], *, details: bool = True
+) -> CheckOut:
     return CheckOut(
         id=c.id,
         created_at=c.created_at,
@@ -40,7 +45,7 @@ def to_check_out(conn: sqlite3.Connection, c: CheckRow, tests: list[TestRow]) ->
         alcohol=c.alcohol,
         notes=c.notes,
         dose_id=c.dose_id,
-        tests=[to_test_out(conn, t) for t in tests],
+        tests=[to_test_out(conn, t, details=details) for t in tests],
     )
 
 
