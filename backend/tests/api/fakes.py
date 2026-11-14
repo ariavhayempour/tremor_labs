@@ -2,6 +2,7 @@
 
 import asyncio
 import dataclasses
+import itertools
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -9,8 +10,8 @@ import numpy as np
 
 from tremorlab.analysis import Analyzers
 from tremorlab.analysis.errors import AnalysisError
-from tremorlab.analysis.reach import ReachResult
-from tremorlab.analysis.tap import TapResult
+from tremorlab.analysis.reach import ReachAttempt, ReachResult
+from tremorlab.analysis.tap import TapFrame, TapResult
 from tremorlab.analysis.tremor import TremorResult
 from tremorlab.config import SimParams
 from tremorlab.sources.base import Batch, ImuBatch, LedCommand, SourceHealth, TofBatch
@@ -29,6 +30,9 @@ FIXED = TremorResult(
 )
 MIN_SPAN_S = 4.0
 TRIM_S = 2.0
+DESCENT_MM = 100.0
+REACH_MM = 2.5
+MIN_TAPS = 3
 
 
 class FakeClock:
@@ -40,12 +44,17 @@ class FakeClock:
 
 
 class FakeAnalysis:
-    """Records calls; tremor fails like the real one when the span is too short."""
+    """Records calls; each analyzer fails like the real one on obviously unusable input."""
 
-    def __init__(self, *, unimplemented: bool = False) -> None:
+    def __init__(
+        self, *, unimplemented: bool = False, tap_rates: tuple[float, ...] = (4.0,)
+    ) -> None:
         self.unimplemented = unimplemented
         self.tremor_calls: list[dict[str, Any]] = []
         self.posture_bands: list[tuple[float, float]] = []
+        self.reach_calls: list[dict[str, Any]] = []
+        self.tap_calls: list[list[TapFrame]] = []
+        self.tap_rates: list[float] = list(tap_rates)
 
     def tremor(self, t: np.ndarray, acc: np.ndarray, *, trim: bool = True) -> TremorResult:
         if self.unimplemented:
@@ -67,11 +76,35 @@ class FakeAnalysis:
         self.posture_bands.append(band)
         return FIXED
 
-    def reach(self, *args: Any) -> ReachResult:
-        raise NotImplementedError
+    def reach(self, t: np.ndarray, mm: np.ndarray, marks: list[float]) -> ReachResult:
+        """One attempt per window [start, m1), [m1, m2), ... whose valid mm span > DESCENT_MM."""
+        if self.unimplemented:
+            raise NotImplementedError
+        self.reach_calls.append({"n": len(t), "marks": list(marks)})
+        edges = [-np.inf, *marks, np.inf]
+        attempts = []
+        for lo, hi in itertools.pairwise(edges):
+            keep = (t >= lo) & (t < hi) & np.isfinite(mm)
+            if np.count_nonzero(keep) >= 2 and np.ptp(mm[keep]) > DESCENT_MM:
+                w_t, w_mm = t[keep], mm[keep]
+                residual = w_mm - np.mean(w_mm)
+                attempts.append(ReachAttempt(w_t, w_mm, w_mm, residual, REACH_MM, 1.0))
+        if not attempts:
+            raise AnalysisError("no_descent_detected")
+        return ReachResult(REACH_MM, 1.0, attempts)
 
-    def tap(self, *args: Any) -> TapResult:
-        raise NotImplementedError
+    def tap(self, frames: list[TapFrame]) -> TapResult:
+        """taps_per_sec comes from tap_rates in call order; fails under MIN_TAPS hand frames."""
+        if self.unimplemented:
+            raise NotImplementedError
+        self.tap_calls.append(list(frames))
+        seen = [f for f in frames if f.lm is not None]
+        if len(seen) < MIN_TAPS:
+            raise AnalysisError("no_taps_detected")
+        t = np.array([f.t for f in seen])
+        signal = np.array([abs(f.lm[1][0] - f.lm[2][0]) for f in seen if f.lm is not None])
+        rate = self.tap_rates[(len(self.tap_calls) - 1) % len(self.tap_rates)]
+        return TapResult(rate, 0.5, -0.1, 0.05, t, signal, np.arange(0, len(t), 2))
 
     def bundle(self) -> Analyzers:
         return Analyzers(tremor=self.tremor, posture=self.posture, reach=self.reach, tap=self.tap)

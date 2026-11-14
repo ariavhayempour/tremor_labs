@@ -5,7 +5,7 @@ import dataclasses
 import logging
 import sqlite3
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -16,15 +16,21 @@ from numpy.typing import NDArray
 from tremorlab.analysis import Analyzers
 from tremorlab.analysis.errors import AnalysisError
 from tremorlab.analysis.posture import BAND_HALF_WIDTH_MM, analyze_posture
-from tremorlab.analysis.reach import analyze_reach
-from tremorlab.analysis.tap import analyze_taps
+from tremorlab.analysis.reach import ReachAttempt, ReachResult, analyze_reach
+from tremorlab.analysis.tap import MIN_TAPS, TapFrame, TapResult, analyze_taps
 from tremorlab.analysis.tremor import TremorResult, analyze_tremor
 from tremorlab.api.schemas import ResultOut
 from tremorlab.db import queries
 from tremorlab.db.models import FailReason, Hand, ResultRow, TestType
 from tremorlab.sources.base import SensorSource
 from tremorlab.stream.broadcaster import Broadcaster
-from tremorlab.stream.messages import position_msg, spectrum_msg, spectrum_payload, status_msg
+from tremorlab.stream.messages import (
+    position_msg,
+    round_sig,
+    spectrum_msg,
+    spectrum_payload,
+    status_msg,
+)
 from tremorlab.stream.recorder import Band, Recorder, valid_mm
 
 STALE_AFTER_S = 120.0
@@ -37,6 +43,8 @@ STATUS_EVERY_S = 1.0
 TICK_S = 0.05
 BAND_LOOKBACK_S = 1.0
 SPECTRUM_KINDS: tuple[TestType, ...] = ("rest", "posture")
+MAX_CURVE_POINTS = 200
+CURVE_T_DECIMALS = 3
 
 log = logging.getLogger(__name__)
 
@@ -94,6 +102,59 @@ def tremor_row(r: TremorResult) -> ResultRow:
         tremor_detected=bool(r.tremor_detected),
         valid_seconds=float(r.valid_seconds),
         details=dict(spectrum_payload(r.freqs, r.psd)),
+    )
+
+
+def finite_or_none(x: float) -> float | None:
+    return float(x) if np.isfinite(x) else None
+
+
+def downsample_idx(n: int, max_points: int = MAX_CURVE_POINTS) -> NDArray[np.int64]:
+    """At most max_points evenly spaced indices into n samples, always keeping both ends."""
+    if n <= max_points:
+        return np.arange(n, dtype=np.int64)
+    return np.unique(np.round(np.linspace(0, n - 1, max_points)).astype(np.int64))
+
+
+def rel_times(t: NDArray[np.float64], t0: float) -> list[float]:
+    """Seconds from t0, rounded to milliseconds."""
+    return [float(v) for v in np.round(t - t0, CURVE_T_DECIMALS).tolist()]
+
+
+def attempt_curve(a: ReachAttempt) -> dict[str, list[float]]:
+    """{"t" s from attempt start, "mm", "residual" mm}, finite points only, downsampled."""
+    t, mm, residual = (np.asarray(x, dtype=np.float64) for x in (a.t, a.mm, a.residual))
+    keep = np.flatnonzero(np.isfinite(t) & np.isfinite(mm) & np.isfinite(residual))
+    if len(keep) == 0:
+        return {"t": [], "mm": [], "residual": []}
+    idx = keep[downsample_idx(len(keep))]
+    return {
+        "t": rel_times(t[idx], float(t[keep[0]])),
+        "mm": round_sig(mm[idx]),
+        "residual": round_sig(residual[idx]),
+    }
+
+
+def reach_row(r: ReachResult) -> ResultRow:
+    return ResultRow(
+        smoothness=finite_or_none(r.smoothness_mm),
+        wobble_ratio=finite_or_none(r.wobble_ratio),
+        details={"attempts": [attempt_curve(a) for a in r.attempts]},
+    )
+
+
+def tap_row(r: TapResult, t_first: float) -> ResultRow:
+    """details t is seconds from the first submitted frame; peaks index into signal."""
+    return ResultRow(
+        taps_per_sec=finite_or_none(r.taps_per_sec),
+        tap_amplitude=finite_or_none(r.amplitude),
+        amplitude_decrement=finite_or_none(r.decrement),
+        rhythm_cv=finite_or_none(r.rhythm_cv),
+        details={
+            "t": rel_times(np.asarray(r.t, dtype=np.float64), t_first),
+            "signal": round_sig(np.asarray(r.signal, dtype=np.float64)),
+            "peaks": [int(i) for i in np.asarray(r.peak_idx).tolist()],
+        },
     )
 
 
@@ -161,17 +222,30 @@ class TestSession:
                 queries.insert_raw(self.conn, test_id, sensor, payload)
             row, fail_reason = self._analyze(rec)
         except NotImplementedError as e:
-            self._finish(rec, "failed", "interrupted")
+            self._finish(test_id, "failed", "interrupted", rec.markers)
             raise AnalysisUnavailableError(f"{rec.kind} analysis is not available yet") from e
         except Exception:
-            self._finish(rec, "failed", "interrupted")
+            self._finish(test_id, "failed", "interrupted", rec.markers)
             raise
+        return self._store(test_id, row, fail_reason, rec.markers)
+
+    def submit_tap(self, test_id: int, frames: Sequence[TapFrame]) -> TestOutcome:
+        """Analyze the browser's landmark frames for a tap test that is still recording."""
+        row = queries.get_test(self.conn, test_id)
         if row is None:
-            self._finish(rec, "failed", fail_reason)
-            return TestOutcome(test_id, "failed", fail_reason, None)
-        queries.insert_result(self.conn, test_id, row)
-        self._finish(rec, "done", None)
-        return TestOutcome(test_id, "done", None, result_out(row))
+            raise NotFoundError(f"test {test_id}")
+        if row.type != "tap" or row.status != "recording":
+            raise InvalidStateError(f"test {test_id} is not an open tap test")
+        ordered = sorted(frames, key=lambda f: f.t)
+        try:
+            result, fail_reason = self._analyze_tap(ordered)
+        except NotImplementedError as e:
+            self._finish(test_id, "failed", "interrupted")
+            raise AnalysisUnavailableError("tap analysis is not available yet") from e
+        except Exception:
+            self._finish(test_id, "failed", "interrupted")
+            raise
+        return self._store(test_id, result, fail_reason)
 
     def mark(self, test_id: int) -> None:
         """Record a reach-attempt boundary at the current clock time."""
@@ -221,6 +295,30 @@ class TestSession:
             return
         self.broadcaster.publish(spectrum_msg(r.freqs, r.psd, r.peak_hz))
 
+    def _store(
+        self,
+        test_id: int,
+        row: ResultRow | None,
+        fail_reason: FailReason | None,
+        markers: list[float] | None = None,
+    ) -> TestOutcome:
+        if row is None:
+            self._finish(test_id, "failed", fail_reason, markers)
+            return TestOutcome(test_id, "failed", fail_reason, None)
+        queries.insert_result(self.conn, test_id, row)
+        self._finish(test_id, "done", None, markers)
+        return TestOutcome(test_id, "done", None, result_out(row))
+
+    def _analyze_tap(
+        self, frames: Sequence[TapFrame]
+    ) -> tuple[ResultRow | None, FailReason | None]:
+        if sum(f.lm is not None for f in frames) < MIN_TAPS:
+            return None, "no_taps_detected"
+        try:
+            return tap_row(self.analyzers.tap(list(frames)), frames[0].t), None
+        except AnalysisError as e:
+            return None, e.code
+
     def _analyze(self, rec: Recorder) -> tuple[ResultRow | None, FailReason | None]:
         t, acc = rec.imu()
         no_data = len(t) < 2 and self.clock() - rec.started_at > MAX_GAP_S
@@ -234,7 +332,12 @@ class TestSession:
                     raise AnalysisError("insufficient_valid_data")
                 t_tof, mm = rec.tof()
                 return tremor_row(self.analyzers.posture(t, acc, t_tof, mm, rec.band)), None
-            raise NotImplementedError(f"{rec.kind} analysis is not wired into the session yet")
+            if rec.kind == "reach":
+                t_tof, mm = rec.tof()
+                if np.count_nonzero(np.isfinite(mm)) < 2:
+                    raise AnalysisError("no_descent_detected")
+                return reach_row(self.analyzers.reach(t_tof, mm, rec.markers)), None
+            raise ValueError(f"no sensor analysis for {rec.kind} tests")
         except AnalysisError as e:
             return None, e.code
 
@@ -260,17 +363,18 @@ class TestSession:
 
     def _finish(
         self,
-        rec: Recorder,
+        test_id: int,
         status: Literal["done", "failed"],
         fail_reason: FailReason | None,
+        markers: list[float] | None = None,
     ) -> None:
         queries.finish_test(
             self.conn,
-            rec.test_id,
+            test_id,
             ended_at=self.now(),
             status=status,
             fail_reason=fail_reason,
-            markers=rec.markers,
+            markers=markers,
         )
 
     def _interrupt(self) -> None:
@@ -278,4 +382,4 @@ class TestSession:
         if rec is None:
             return
         self._detach()
-        self._finish(rec, "failed", "interrupted")
+        self._finish(rec.test_id, "failed", "interrupted", rec.markers)
