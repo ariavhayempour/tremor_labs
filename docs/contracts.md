@@ -207,7 +207,7 @@ No body. Stops recording, saves the raw batches, and runs analysis. Response `Te
 { "test_id": 40, "status": "done", "fail_reason": null, "result": { "...": "ResultOut" } }
 { "test_id": 41, "status": "failed", "fail_reason": "sensor_disconnected", "result": null }
 ```
-Analysis failures are **200 with `status: "failed"`**, never a 5xx. 409 `invalid_state` if the test isn't recording.
+Analysis failures are **200 with `status: "failed"`**, never a 5xx. 409 `invalid_state` if the test isn't recording. During development, a test type whose analysis isn't built yet returns 501 `not_implemented`, and the test is stored as `failed` / `interrupted`.
 
 ### `POST /api/tests/{test_id}/mark`
 
@@ -346,7 +346,7 @@ Server → client only. Every message is a JSON object with a `type` field. Time
 | `type` | Rate | Shape |
 |---|---|---|
 | `imu` | ~10/s | `{ "type": "imu", "t0": 1731600000.123, "fs": 100.0, "samples": [[ax, ay, az, gx, gy, gz], ...] }` |
-| `tof` | ~10/s | `{ "type": "tof", "t0": 1731600000.123, "fs": 40.0, "samples_mm": [212.0, 211.0, ...] }` |
+| `tof` | ~10/s | `{ "type": "tof", "t0": 1731600000.123, "fs": 40.0, "t": [0.0, 0.026, 0.049, ...], "samples_mm": [212.0, 211.0, ...] }` |
 | `spectrum` | ~4/s, only while a rest or posture test is recording | `{ "type": "spectrum", "freqs": [0.0, 0.25, ...], "psd": [...], "peak_hz": 5.0 }` |
 | `position` | ~10/s, only while a posture test is recording | `{ "type": "position", "tof_mm": 214.0, "in_band": true, "band": [170.0, 230.0], "valid_seconds": 12.5 }` |
 | `status` | 1/s while recording, and when recording starts or stops | `{ "type": "status", "recording": true, "test_id": 40, "test_type": "rest", "seconds_left": null }` |
@@ -356,7 +356,9 @@ Field notes:
 - **`imu`:**
   - Sample `i` is at time `t0 + i / fs`. `fs` is the batch's effective rate, measured from its timestamps; it is never assumed to be 100.
   - `samples` rows are acceleration in m/s² then gyroscope in deg/s.
-- **`tof`:** sample `i` is at `t0 + i / fs`. Invalid readings are already dropped, so `samples_mm` holds numbers only.
+- **`tof`:**
+  - Sample `i` is at **`t0 + t[i]`**. `t` holds per-sample offsets in seconds (`t[0] == 0`), the same length as `samples_mm`.
+  - Invalid readings are dropped, so the spacing can be uneven. **Never rebuild ToF times from `fs`.** `fs` is the batch's effective rate, kept for display only.
 - **`spectrum`:**
   - Computed over the last ≤ 8 s of the recording. `freqs` are in Hz, up to 15 Hz.
   - `psd` is in (m/s²)²/Hz, summed over the axes.
@@ -368,7 +370,7 @@ Field notes:
 - **`status`:** the frontend owns test timing, so `seconds_left` is always `null`. The field is kept for PRD compatibility. `test_id` and `test_type` are `null` when not recording.
 - **`source`:** `connected: false` means the board link dropped. Show the disconnect message and offer Retry.
 
-Additions beyond the PRD shapes: `tof.fs`, `position.band`, `position.valid_seconds`, `status.test_id`, `status.test_type`, and the whole `source` message.
+Additions beyond the PRD shapes: `tof.fs`, `tof.t`, `position.band`, `position.valid_seconds`, `status.test_id`, `status.test_type`, and the whole `source` message.
 
 ---
 
@@ -454,12 +456,13 @@ class SensorSource(Protocol):
 {"k":"status","d":["ok", imu_count, tof_count, nan_count]}
 ```
 - **`imu`:** a flat list of ints, 7 per sample.
-  - `t_us` is the 32-bit `micros()` value. It wraps about every 71.6 min, and the Mac unwraps it.
+  - `t_us` is the 32-bit `micros()` value, sent as a **signed int32** (the Mac masks with `& 0xFFFFFFFF`). It wraps about every 71.6 min, and the Mac unwraps it.
   - Acceleration is in milli-g; the Mac converts with m/s² = mg × 9.80665 / 1000.
   - Gyroscope is in milli-deg/s; the Mac converts with deg/s = mdps / 1000.
 - **`tof`:** `mm` is an integer distance. Invalid (NaN) readings are skipped on the board and counted in `nan_count`.
-- **`status`:** sent once a second. The first element is `"ok"`, `"movement_missing"` or `"distance_missing"`. The counts cover the last second.
-- **Batching:** about every 100 ms. The exact batch size and flush interval are recorded in `docs/hardware-notes.md` after measurement.
+- **`status`:** sent once a second. The first element is `"ok"`, `"movement_missing"`, `"distance_missing"` or `"both_missing"`. The counts cover the last second.
+- **Batching:** one sample per message, because `notify` blocks the MCU while it sends (measured; see `docs/hardware-notes.md`). Receivers must accept any whole number of samples per line.
+- **Ordering:** lines can arrive slightly out of order. Order samples by `t_us`, never by arrival.
 
 **Mac → Board:**
 
