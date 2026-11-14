@@ -25,7 +25,7 @@ cd frontend && pnpm install    # once frontend/ exists
 | `make dev SENSOR_SOURCE=board` | Runs `make board-link` first, then reads the real board over USB. |
 | `make dev SENSOR_SOURCE=replay` | Replays stored raw samples (the most recent full check, or `REPLAY_TEST_ID`). |
 | `make seed` | Writes 14 days of deterministic demo data to `backend/data/tremorlab.db`. **It replaces that DB.** |
-| `make demo` | Rehearsal mode: copies the seeded DB to `backend/data/demo.db`, then runs `dev` with the replay source on it. |
+| `make demo` | Rehearsal mode: copies the seeded DB to `backend/data/demo.db`, then runs `dev` with the replay source on it. The judging script and its fallbacks are in `docs/demo.md`. |
 | `make test` / `make test-e2e` | pytest (backend) + vitest / Playwright (frontend). |
 | `make lint` / `make typecheck` / `make build` | ruff / mypy, plus the frontend's lint, `tsc` and `vite build`. |
 | `make doctor` / `make rate` | Hardware chain checklist / measured IMU and ToF rates. |
