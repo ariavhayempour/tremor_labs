@@ -4,11 +4,15 @@ import type { useSensorStream } from '../api/useSensorStream'
 import { copy } from '../copy'
 import { Icon } from '../components/Icon'
 import { Waveform } from '../viz/Waveform'
-import { getHealth } from '../api/client'
+import { createCheck, getHealth, getSettings, led } from '../api/client'
+import type { CheckInRequest, Hand, Health } from '../api/types'
+import { MedicationPicker } from './MedicationPicker'
+import { healthProblems } from './liveMessages'
 import { isComplete, requiredRuns, runSeconds, steps, type CheckSession, type CheckStep, type Mode, type SignalPoint } from './checkSession'
 import { useCheckRecording } from './useCheckRecording'
 import { DeviceStatus } from './DeviceStatus'
-export function CheckPage({ step, session, stream, onMode, onFinish }: { step: CheckStep; session: CheckSession; stream: ReturnType<typeof useSensorStream>; onMode: (mode: Mode) => void; onFinish: (samples?: SignalPoint[]) => void }) {
+/** Demo-mode steps, plus the connect step in both modes (sensor mode creates the backend check here). */
+export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }: { step: CheckStep; session: CheckSession; stream: ReturnType<typeof useSensorStream>; onMode: (mode: Mode) => void; onFinish: (samples?: SignalPoint[]) => void; onConnect: (checkId: number, hand: Hand, minutes: number | null) => void }) {
   const navigate = useNavigate()
   const text = copy.flow.steps[step]
   const demo = session.mode === 'demo'
@@ -17,6 +21,10 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
   const recording = useCheckRecording(step, onFinish, session.records[step]?.samples)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
+  const [health, setHealth] = useState<Health | null>(null)
+  const [creating, setCreating] = useState(false)
+  const ready = !demo && health !== null && healthProblems(health).length === 0
+  useEffect(() => { if (step === 'connect') led('idle') }, [step])
   const [detectedCount, setDetectedCount] = useState(complete ? 3 : 0)
   const [celebrating, setCelebrating] = useState(false)
   const celebrationTimer = useRef<number | undefined>(undefined)
@@ -29,7 +37,7 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
     if (mode === session.mode) return
     clearTimeout(connectionTimer.current)
     clearTimeout(celebrationTimer.current)
-    setChecking(false); setError(''); setDetectedCount(0); setCelebrating(false)
+    setChecking(false); setError(''); setDetectedCount(0); setCelebrating(false); setHealth(null)
     onMode(mode)
   }
   async function connect() {
@@ -50,11 +58,25 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
       return
     }
     try {
-      await getHealth()
-      if (alive.current) setError(copy.flow.sensorUnavailable)
-    } catch { if (alive.current) setError(copy.offline) }
+      const h = await getHealth()
+      if (alive.current) { setHealth(h); setError(healthProblems(h)[0] ?? '') }
+    } catch { if (alive.current) { setHealth(null); setError(copy.offline) } }
     finally { if (alive.current) setChecking(false) }
   }
+  async function pick(body: CheckInRequest) {
+    setCreating(true); setError('')
+    try {
+      const hand = await getSettings().then(s => s.tested_hand, () => 'right' as const)
+      const created = await createCheck(body)
+      if (alive.current) onConnect(created.check_id, hand, created.minutes_since_dose)
+    } catch { if (alive.current) setError(copy.offline) }
+    finally { if (alive.current) setCreating(false) }
+  }
+  const deviceRows = !demo && health ? [
+    { detected: health.connected && health.sensors_detected.movement, status: health.connected && health.sensors_detected.movement ? copy.flow.backendReady : copy.flow.notConnected },
+    { detected: health.connected && health.sensors_detected.distance, status: health.connected && health.sensors_detected.distance ? copy.flow.backendReady : copy.flow.notConnected },
+    { detected: false, status: copy.sensorCheck.cameraLater },
+  ] : undefined
   const index = steps.indexOf(step)
   const next = steps[index + 1]
   const active = recording.phase === 'running'
@@ -77,8 +99,8 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
             <progress aria-label={copy.flow.progress} max={runSeconds(step)} value={complete ? runSeconds(step) : recording.elapsed}/>
             {(step === 'reach' || step === 'tap') && <small>{runs} / {requiredRuns(step)} {step === 'reach' ? copy.flow.attempts : copy.flow.hands}</small>}
           </div>}
-          {!complete && <button className="test-start" disabled={checking || (step !== 'connect' && !demo)} onClick={step === 'connect' ? () => void connect() : active ? recording.pause : paused ? recording.resume : recording.start}>
-            <Icon name={active ? 'pause' : paused ? 'play' : step === 'connect' ? 'connect' : 'play'} size={17}/>{checking ? copy.flow.connecting : active ? copy.flow.pause : paused ? copy.flow.resume : startLabel}
+          {!complete && <button className="test-start" disabled={checking || creating || (step !== 'connect' && !demo)} onClick={step === 'connect' ? () => void connect() : active ? recording.pause : paused ? recording.resume : recording.start}>
+            <Icon name={active ? 'pause' : paused ? 'play' : step === 'connect' ? 'connect' : 'play'} size={17}/>{checking ? copy.flow.connecting : active ? copy.flow.pause : paused ? copy.flow.resume : ready ? copy.sensorCheck.checkSensors : startLabel}
           </button>}
           {complete && <div className="test-completed"><Icon name="check" size={18}/>{copy.flow.complete}</div>}
           {waitingForNextRun && <p className="run-message" role="status">{step === 'tap' ? copy.flow.otherHand : copy.flow.nextReach}</p>}
@@ -89,7 +111,9 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
         <section className="test-visualization" aria-labelledby="live-output-title">
           <div className="test-output-heading"><h2 id="live-output-title">{copy.sensor}</h2><span className="status"><span className={`dot ${active ? '' : 'gray'}`}/>{demo ? copy.flow.simulated : stream.connected ? copy.live : copy.disconnected}</span></div>
           {step === 'connect'
-            ? <DeviceStatus demo={demo} connected={complete} checking={checking} detectedCount={detectedCount} celebrating={celebrating}/>
+            ? ready && !complete
+              ? <><p className="devices-ready"><span><Icon name="check" size={18}/></span>{copy.flow.devicesReady}</p><MedicationPicker busy={creating} onPick={body => void pick(body)}/></>
+              : <DeviceStatus demo={demo} connected={complete} checking={checking} detectedCount={detectedCount} celebrating={celebrating} rows={deviceRows}/>
             : <>
                 <div className="test-graph-toolbar"><span><Icon name={step === 'reach' ? 'reach' : step === 'tap' ? 'tap' : 'wave'} size={18}/>{text.visualization}</span><span className="muted">{complete ? copy.flow.complete : paused ? copy.flow.paused : active ? copy.flow.recording : copy.flow.ready}</span></div>
                 {step === 'posture' && <div className="height-guide"><span>{copy.flow.handHeight}</span><strong>{recording.height} {copy.flow.mm}</strong><span className="height-band">{active || complete ? copy.flow.inRange : copy.flow.targetRange}</span></div>}
@@ -97,7 +121,7 @@ export function CheckPage({ step, session, stream, onMode, onFinish }: { step: C
                 <div className="test-graph"><div className="chart-label">{graphLabel}</div><Waveform buf={demo ? recording.buffer : stream.imu} min={step === 'reach' ? 0 : step === 'tap' ? 0 : -2} max={step === 'reach' ? 350 : step === 'tap' ? 1 : 2} seconds={step === 'reach' ? 6 : 5} label={text.graphLabel}/><div className="chart-bottom"><span>{step === 'reach' ? copy.flow.reachWindow : copy.sample}</span><span>{copy.timeAxis}</span></div></div>
               </>}
           <div className="test-next-row test-visualization-footer">
-            <span className="test-next-status" role="status">{error || (complete ? copy.flow.readyToContinue : demo ? copy.flow.demoNotice : copy.flow.sensorNotice)}</span>
+            <span className="test-next-status" role="status">{error || (complete ? copy.flow.readyToContinue : demo ? copy.flow.demoNotice : copy.sensorCheck.notice)}</span>
             <button className={`test-continue ${complete ? 'is-ready' : ''}`} disabled={!complete} onClick={() => navigate(`/check/${next ?? 'complete'}`)}><span className="continue-label">{next ? `${copy.flow.continueTo} ${copy.flow.steps[next].label}` : copy.flow.viewSummary}<Icon name="arrow" size={18}/></span></button>
           </div>
         </section>

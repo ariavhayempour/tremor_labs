@@ -89,7 +89,7 @@ test('all five test pages fit a laptop viewport without scrolling or clipping', 
       await page.goto('/check/connect')
       await page.evaluate(({ steps, index }) => {
         const records = Object.fromEntries(steps.slice(0, index).map(step => [step, { runs: step === 'reach' ? 3 : 1, seconds: 30 }]))
-        sessionStorage.setItem('tremor-check-v1', JSON.stringify({ mode: 'demo', records }))
+        sessionStorage.setItem('tremor-check-v2', JSON.stringify({ mode: 'demo', records }))
       }, { steps, index })
       await page.goto(`/check/${step}`)
       const layout = await page.evaluate(() => {

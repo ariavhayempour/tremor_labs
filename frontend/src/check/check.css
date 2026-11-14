@@ -168,3 +168,15 @@
   .device-status-symbol.is-celebrating { animation: none; }
   .confetti-burst { display: none; }
 }
+.test-skip { width: 100%; min-height: 40px; margin-top: 8px; border: 1px solid #d7dce3; border-radius: 13px; background: #fff; color: #566c85; font-size: 14px; font-weight: 600; }
+.test-skip:hover { background: #f4f7fb; }
+.medication-picker { margin: 0 20px 18px; padding: 16px; border: 1px solid #d7dce3; border-radius: 14px; background: #fff; }
+.medication-picker legend { padding: 0 6px; font-size: 16px; font-weight: 700; }
+.medication-picker p { margin: 4px 0 12px; font-size: 13px; }
+.medication-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.medication-choices button { min-height: 56px; border: 1px solid #789ffd; border-radius: 12px; background: #f4f8ff; color: #1f3d6b; font-size: 16px; font-weight: 600; }
+.medication-choices button:hover:not(:disabled) { background: #e3edff; }
+.test-graph canvas { width: 100%; }
+.medication-picker { flex-shrink: 0; }
+.devices-ready { display: flex; align-items: center; gap: 10px; margin: 20px 20px 12px; color: #1f3d6b; font-size: 16px; font-weight: 700; }
+.devices-ready span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg,#2f6bff,#68c4ff); color: #fff; }

@@ -165,3 +165,12 @@ footer { display: flex; align-items: center; justify-content: center; gap: 8px; 
 }
 
 @media (prefers-reduced-transparency: reduce) { .overview-input { background: #ebebeb; } .overview-output { background: #fff; } }
+.results-page { display: grid; gap: 20px; }
+.results-page .lead { display: flex; align-items: center; gap: 8px; }
+.results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.result-card { display: grid; gap: 6px; padding: 20px; border: 1px solid var(--border); border-radius: 12px; }
+.result-card h2 { margin: 0; font-size: 18px; }
+.result-value { font-size: 34px; font-variant-numeric: tabular-nums; }
+.result-card.is-failed .result-value, .result-card.is-missing .result-value { font-size: 20px; color: var(--muted, #66819d); }
+.result-baseline { margin: 0; font-weight: 600; }
+.results-actions { display: flex; flex-wrap: wrap; gap: 12px; }
