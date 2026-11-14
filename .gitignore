@@ -1,0 +1,35 @@
+# Planning artifacts (always untracked)
+docs/superpowers/
+tasks/
+SPEC.md
+plan.md
+todo.md
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local data (health data never leaves the machine)
+backend/data/
+*.db
+*.db-journal
+
+# Node / frontend
+node_modules/
+frontend/dist/
+playwright-report/
+test-results/
+
+# Env / OS / editor
+.env
+.env.local
+.DS_Store
+.vscode/
+.idea/
+
+# MediaPipe assets (copied/downloaded at setup)
+frontend/public/mediapipe/
