@@ -11,6 +11,8 @@ HAS_FRONTEND := $(wildcard $(FRONTEND)/package.json)
 SCRIPT_ENV := PYTHONPATH=$(CURDIR)/$(BACKEND) uv run --project $(BACKEND) python
 DEMO_DB := $(CURDIR)/$(BACKEND)/data/demo.db
 SEED_DB := $(BACKEND)/data/tremorlab.db
+# adb from PATH, else the copy App Lab bundles.
+ADB ?= $(shell command -v adb 2>/dev/null || ls $(HOME)/Library/Arduino15/packages/arduino/tools/adb/*/adb 2>/dev/null | tail -1)
 
 # Runs scripts/$(1) with the backend env, or fails clearly if the script isn't written yet.
 define run_script
@@ -34,7 +36,8 @@ dev: $(if $(filter board,$(SENSOR_SOURCE)),board-link)
 	wait
 
 board-link:
-	adb forward tcp:7700 tcp:7700
+	@test -n "$(ADB)" || { echo "adb not found: install App Lab or brew install android-platform-tools"; exit 1; }
+	$(ADB) forward tcp:7700 tcp:7700
 
 seed:
 	$(call run_script,seed.py,--db $(SEED_DB) --reset)
