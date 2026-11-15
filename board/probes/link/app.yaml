@@ -1,0 +1,5 @@
+name: tremor-probe-link
+icon: 🔗
+description: Probe. The sketch notifies a counter every 100 ms; Python forwards each value as NDJSON to a TCP client on port 7700.
+ports: [7700]
+bricks: []

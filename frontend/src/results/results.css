@@ -1,0 +1,15 @@
+.results-page { max-width: 1200px; margin: 0 auto; padding: 8px 0 24px; color: #0b1f3a; }
+.results-page h1 { font-size: 24px; }
+.results-page .lead { color: #66819d; font-size: 14px; }
+.results-page .lead svg { color: #346cf5; }
+.results-page .result-card { border: 1px solid #789ffd80; border-radius: 14px; background: #ffffffcf; box-shadow: 0 8px 20px #11437908; }
+.results-page .result-card h2 { font-size: 16px; color: #0b1f3a; }
+.results-page .result-value { color: #0b1f3a; }
+.results-page .result-card.is-failed .result-value, .results-page .result-card.is-missing .result-value { color: #8a9ab1; }
+.results-page .result-card .muted { color: #66819d; font-size: 13px; }
+.results-page .result-baseline { color: #274b7a; font-size: 13px; }
+.results-primary, .results-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 14px; min-height: 46px; padding: 12px 18px; border-radius: 10px; font-size: 14px; }
+.results-primary { border: 1px solid #789ffd; background: linear-gradient(165deg,#2f6bff,#68b7ff); color: #fff; font-weight: 650; box-shadow: 0 7px 12px #2f6bff20; }
+.results-primary:hover { background: #346cf5; }
+.results-secondary { border: 1px solid #2f6bff30; background: #ffffffb3; color: #526b89; }
+.results-secondary:hover { background: #eaf3ff; }
