@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tremor Lab · Your trends</title>
+<style>
+  :root {
+    --bg: #f3f7fd; --card: #fff; --ink: #0b1f3a; --muted: #566c88; --faint: #7d8fa6;
+    --blue: #346cf5; --blue-ink: #2456d6; --blue-soft: #eaf3ff; --navy: #1d3c6e;
+    --line: #2f6bff24; --rule: #2f6bff14; --grid: #e3eaf5; --dose: #8a6a1f; --dose-ink: #6b5216;
+    --radius: 18px; --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; color: var(--ink); background: var(--bg) url('../../../frontend/public/figma/check-texture.png') left top / 180px 180px repeat; font: 15px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-synthesis: none; }
+  ::selection { background: #346cf533; color: var(--ink); }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2.5px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
+  h1:focus { outline: none; }
+  h1, h2, h3, p { margin: 0; }
+  .num { font-variant-numeric: tabular-nums; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+  /* Shell (matches the app's HomeShell) */
+  .header { display: flex; align-items: center; gap: 34px; padding: 12px 28px; min-height: 72px; background: #ffffffcf; border-bottom: 1px solid var(--line); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 5; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 750; }
+  .brand > span { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg,#2f6bff,#68c4ff); color: #fff; box-shadow: 0 5px 12px #2f6bff22; }
+  .brand svg.i { width: 22px; height: 22px; }
+  .header nav { display: flex; gap: 8px; margin-left: 32px; }
+  .header nav a { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; color: var(--muted); border-radius: 9px; min-height: 44px; white-space: nowrap; }
+  .header nav a:hover { background: var(--blue-soft); }
+  .header nav a[aria-current] { color: var(--blue-ink); background: var(--blue-soft); font-weight: 600; }
+  .header .spacer { margin-left: auto; }
+  .sample { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); padding: 7px 12px; border: 1px dashed #2f6bff40; border-radius: 999px; background: #fff; white-space: nowrap; }
+
+  main { max-width: 1120px; margin: 0 auto; padding: 36px 28px 24px; }
+  .footer { max-width: 1120px; margin: 0 auto; padding: 8px 28px 32px; font-size: 13px; color: var(--muted); }
+
+  /* Page heading and controls */
+  .page-head h1, .day-head h1 { font-size: 32px; line-height: 1.15; font-weight: 700; letter-spacing: -0.015em; }
+  .summary { margin-top: 10px; font-size: 18px; line-height: 1.45; max-width: 64ch; }
+  .summary strong { font-weight: 650; }
+  .controls { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 24px 0 20px; }
+  .tabs { display: inline-flex; gap: 4px; border-bottom: 1px solid var(--line); }
+  .tabs button { position: relative; border: 0; background: transparent; min-height: 48px; padding: 0 20px; font-size: 16px; font-weight: 550; color: var(--muted); border-radius: 10px 10px 0 0; }
+  .tabs button:hover { color: var(--ink); background: #ffffff99; }
+  .tabs button[aria-selected="true"] { color: var(--blue-ink); font-weight: 650; }
+  .tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--blue); }
+  .tabs small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); margin-top: -2px; }
+  .seg { display: inline-flex; padding: 4px; gap: 4px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+  .seg button { border: 0; background: transparent; min-height: 44px; padding: 0 18px; border-radius: 9px; font-size: 15px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--blue-soft); color: var(--blue-ink); font-weight: 600; }
+  .seg button:hover:not([aria-pressed="true"]) { color: var(--ink); }
+
+  .stack { display: grid; gap: 20px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 28px #11437908; padding: 28px 32px; min-width: 0; }
+  .grid2 .card, .grid3 .card { padding: 24px 24px 20px; }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
+  .card-head h2 { font-size: 20px; font-weight: 650; }
+  .grid3 .card-head h2 { font-size: 17px; }
+  .card-head p { font-size: 14px; color: var(--muted); margin-top: 3px; max-width: 70ch; }
+  .stat { margin-top: 12px; font-size: 16px; }
+  .stat strong { font-weight: 700; }
+  .stat span { color: var(--muted); }
+  .section-title { font-size: 14px; font-weight: 650; color: var(--muted); margin: 12px 0 -4px; }
+  .key { display: flex; gap: 8px 18px; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); padding-top: 4px; }
+  .key span { display: inline-flex; align-items: center; gap: 8px; }
+  .k-line { width: 22px; height: 0; border-top: 2.5px solid var(--blue); position: relative; }
+  .k-line.dash { border-top: 2.5px dashed var(--navy); }
+  .k-line.dash::after { background: var(--navy); }
+  .k-line::after { content: ""; position: absolute; left: 7px; top: -5.5px; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 2px #fff; }
+  .k-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
+  .k-dot.hollow { background: #fff; border: 2px solid var(--navy); }
+  .k-band { width: 22px; height: 12px; background: #346cf51f; border-top: 1px dashed #346cf580; border-bottom: 1px dashed #346cf580; }
+  .k-dose { width: 0; height: 14px; border-left: 2px dashed var(--dose); margin: 0 10px; }
+
+  /* Charts */
+  .chart { position: relative; margin-top: 16px; user-select: none; }
+  .chart svg.plot { display: block; width: 100%; overflow: visible; }
+  .hit { position: absolute; top: 0; border: 0; padding: 0; background: transparent; border-radius: 10px; }
+  .hit:focus-visible { outline-offset: -2px; }
+  .tip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.45; min-width: 180px; max-width: 280px; box-shadow: 0 12px 28px #0b1f3a33; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .2s var(--ease); z-index: 3; }
+  .tip.on { opacity: 1; transform: none; }
+  .tip b { font-size: 15px; font-weight: 650; display: block; margin-bottom: 4px; }
+  .tip .row { display: flex; justify-content: space-between; gap: 16px; }
+  .tip .row span { color: #c9d6ea; }
+  .tip .row strong { font-weight: 650; }
+  .tip .tm { color: #c9d6ea; }
+  .tip .tc { margin-top: 8px; padding-top: 8px; border-top: 1px solid #ffffff26; color: #bcd4ff; font-weight: 550; }
+  .chart-note { margin-top: 12px; font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw 1.1s var(--ease) .1s forwards; }
+  .fade { opacity: 0; animation: fade .5s var(--ease) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes fade { to { opacity: 1; } }
+
+  /* Day list (simple tab) */
+  .daylist { margin-top: 14px; }
+  .dl-head, .dl-row { display: grid; grid-template-columns: minmax(150px, 1.4fr) repeat(4, minmax(0, 1fr)) 20px; align-items: center; gap: 12px; padding: 0 10px; }
+  .dl-head { font-size: 13px; color: var(--muted); padding-bottom: 8px; }
+  .dl-head span:not(:first-child) { text-align: right; }
+  .dl-head small { display: block; color: var(--faint); font-size: 12px; }
+  .dl-row { width: 100%; min-height: 64px; border: 0; border-top: 1px solid var(--rule); background: transparent; text-align: left; border-radius: 0; }
+  .dl-row:hover { background: var(--blue-soft); border-radius: 10px; }
+  .dl-row .d { font-weight: 600; font-size: 16px; }
+  .dl-row .d small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); }
+  .dl-row .v { font-size: 19px; font-weight: 700; text-align: right; }
+  .dl-row .v small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .dl-row .v small svg { width: 12px; height: 12px; vertical-align: -1px; }
+  .dl-row > svg.i { color: var(--faint); }
+  .dl-row .lab { display: none; }
+
+  /* Day view */
+  .back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px 0 10px; margin-left: -10px; font-size: 15px; font-weight: 600; color: var(--blue-ink); border: 0; background: transparent; border-radius: 10px; }
+  .back:hover { background: var(--blue-soft); }
+  .day-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 8px; }
+  .stepper { display: flex; gap: 8px; }
+  .stepper button { display: inline-flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 16px; border: 1px solid var(--line); background: #fff; border-radius: 12px; font-size: 15px; }
+  .stepper button:hover:not(:disabled) { border-color: #346cf566; background: var(--blue-soft); }
+  .stepper button:disabled { opacity: .4; cursor: default; }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 12px; font-size: 16px; color: var(--muted); }
+  .facts strong { color: var(--ink); font-weight: 650; }
+
+  .compare { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 18px; border-top: 1px solid var(--rule); }
+  .compare > div { padding: 18px 20px 4px 0; }
+  .compare > div + div { padding-left: 20px; border-left: 1px solid var(--rule); }
+  .compare h3 { font-size: 15px; font-weight: 600; }
+  .compare .cv { margin-top: 8px; font-size: 28px; font-weight: 700; line-height: 1.1; }
+  .compare .cv small { font-size: 14px; font-weight: 450; color: var(--muted); margin-left: 4px; }
+  .compare .cu { margin-top: 4px; font-size: 14px; color: var(--muted); }
+  .pill { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; background: var(--blue-soft); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
+  .pill svg { width: 15px; height: 15px; }
+
+  table { border-collapse: collapse; }
+  table.checks { width: 100%; margin-top: 14px; font-size: 15px; }
+  .checks th { text-align: left; font-size: 13px; font-weight: 550; color: var(--muted); padding: 10px 12px; vertical-align: bottom; }
+  .checks th small { display: block; font-weight: 400; color: var(--faint); }
+  .checks td { padding: 16px 12px; border-top: 1px solid var(--rule); vertical-align: top; }
+  .checks td small { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .checks .big { font-size: 20px; font-weight: 700; }
+  .checks tr, .data tr { transition: background .6s var(--ease); }
+  tr.flash { background: var(--blue-soft); }
+  .checks a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--blue-ink); font-weight: 600; white-space: nowrap; }
+  .checks a:hover { background: var(--blue-soft); }
+  .foot-note { margin-top: 16px; font-size: 14px; color: var(--muted); max-width: 78ch; }
+
+  /* Detailed data tables */
+  .scroll { overflow-x: auto; margin-top: 14px; border-radius: 10px; }
+  .scroll:focus-visible { outline-offset: 2px; }
+  table.data { width: 100%; font-size: 13.5px; white-space: nowrap; }
+  .data th { text-align: right; font-size: 12.5px; font-weight: 550; color: var(--muted); padding: 8px 7px; vertical-align: bottom; line-height: 1.3; }
+  .data th small { display: block; font-weight: 400; color: var(--faint); }
+  .data th:first-child, .data td:first-child { text-align: left; position: sticky; left: 0; background: #fff; }
+  .data thead tr.group th { text-align: center; color: var(--ink); font-size: 13px; font-weight: 650; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+  .data td { text-align: right; padding: 10px 7px; border-top: 1px solid var(--rule); }
+  .data td.sep, .data th.sep { border-left: 1px solid var(--rule); }
+  .data tbody tr:hover td { background: #f6f9ff; }
+  .data .muted { color: var(--muted); }
+  .data .dlink { border: 0; background: transparent; padding: 6px 8px; margin: -6px -8px; border-radius: 8px; color: var(--blue-ink); font-weight: 600; min-height: 36px; }
+  .data .dlink:hover { background: var(--blue-soft); }
+  .data .dlink small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; text-align: left; }
+  .show-all { margin-top: 14px; min-height: 48px; padding: 0 20px; border: 1px solid var(--line); background: #fff; border-radius: 12px; font-size: 15px; font-weight: 600; color: var(--blue-ink); }
+  .show-all:hover { background: var(--blue-soft); }
+  .profile td:first-child { font-weight: 550; }
+  .profile .change { display: inline-flex; align-items: center; gap: 5px; justify-content: flex-end; }
+  .profile .change svg { width: 14px; height: 14px; }
+
+  .view { animation: enter .45s var(--ease); }
+  @keyframes enter { from { opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) { .draw, .fade, .view { animation: none; stroke-dashoffset: 0; opacity: 1; } .tip { transition: none; } }
+
+  @media (max-width: 1060px) { .grid3 { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) {
+    .header { flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
+    .header nav { order: 3; width: 100%; margin: 0; justify-content: center; }
+    .header nav a { padding: 10px 12px; }
+    main { padding: 24px 16px 16px; }
+    .footer { padding: 8px 16px 24px; }
+    .day-head { flex-direction: column; align-items: stretch; }
+    .card, .grid2 .card, .grid3 .card { padding: 22px 18px; border-radius: 16px; }
+    .grid2 { grid-template-columns: 1fr; }
+    .compare { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .compare > div:nth-child(3) { padding-left: 0; border-left: 0; }
+    .compare > div:nth-child(n+3) { border-top: 1px solid var(--rule); }
+  }
+  @media (max-width: 720px) {
+    .page-head h1, .day-head h1 { font-size: 27px; }
+    .summary { font-size: 16px; }
+    .controls { flex-direction: column; align-items: stretch; }
+    .tabs { width: 100%; }
+    .tabs button { flex: 1; }
+    .seg { align-self: flex-start; }
+    .stepper button { flex: 1; justify-content: center; }
+    .dl-head { display: none; }
+    .dl-row { grid-template-columns: repeat(4, minmax(0, 1fr)) 20px; padding: 12px 6px; row-gap: 6px; align-items: start; }
+    .dl-row .d { grid-column: 1 / 5; grid-row: 1; }
+    .dl-row > svg.i { grid-column: 5; grid-row: 1; }
+    .dl-row .v { text-align: left; font-size: 17px; }
+    .dl-row .lab { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted); }
+    .checks thead { display: none; }
+    .checks, .checks tbody, .checks tr, .checks td { display: block; width: 100%; }
+    .checks tr { border-top: 1px solid var(--rule); padding: 12px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+    .checks td { border: 0; padding: 6px 0; }
+    .checks td[data-l]::before { content: attr(data-l); display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+    .checks td.when, .checks td.go { grid-column: 1 / -1; }
+    .checks a { padding: 0; }
+    .sample span.long { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="header">
+  <a class="brand" href="#"><span><svg class="i" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span>Tremor Lab</a>
+  <nav aria-label="Main">
+    <a href="#"><svg class="i" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Home</a>
+    <a href="#" aria-current="page" data-go="overview"><svg class="i" viewBox="0 0 24 24"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>Trends</a>
+    <a href="#"><svg class="i" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M16 13H8M16 17H8M10 9H8"/></svg>Doctor report</a>
+  </nav>
+  <span class="spacer"></span>
+  <span class="sample" title="These numbers are generated for this mockup, not measured."><svg class="i" viewBox="0 0 24 24" style="width:15px;height:15px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Sample data<span class="long">&nbsp;· not real checks</span></span>
+</header>
+
+<main id="app"></main>
+<p class="footer">Tremor Lab is a tracking tool, not a medical device. Discuss results with your doctor.</p>
+
+<script src="shared/tremor-data.js"></script>
+<script>
+(() => {
+  const D = window.TREMOR_DATA;
+  const app = document.getElementById('app');
+  const ICON = {
+    left: '<svg class="i" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>',
+    right: '<svg class="i" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>',
+    back: '<svg class="i" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>',
+    arrow: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>',
+    tap: '<svg class="i" viewBox="0 0 24 24"><path d="M22 14a8 8 0 0 1-8 8M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>',
+    up: '<svg class="i" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg>',
+    down: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
+    same: '<svg class="i" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14"/></svg>',
+  };
+  const BLUE = '#346cf5', NAVY = '#1d3c6e', MUTED = '#566c88', INK = '#0b1f3a';
+
+  // ----- helpers -----
+  const vals = xs => xs.filter(v => v !== null && v !== undefined && !Number.isNaN(v));
+  const mean = xs => { const v = vals(xs); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const quantile = (xs, q) => { const s = vals(xs).sort((a, b) => a - b); const p = (s.length - 1) * q, lo = Math.floor(p); return s[lo] + (s[Math.min(lo + 1, s.length - 1)] - s[lo]) * (p - lo); };
+  const parse = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+  const fmt = (iso, o) => new Intl.DateTimeFormat('en-GB', o).format(parse(iso));
+  const shortDate = iso => fmt(iso, { day: 'numeric', month: 'short' });
+  const longDate = iso => fmt(iso, { weekday: 'long', day: 'numeric', month: 'long' });
+  const weekday = iso => fmt(iso, { weekday: 'short' });
+  const clock = min => { const h = Math.floor(min / 60), m = Math.round(min % 60); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h >= 12 ? 'pm' : 'am'}`; };
+  const hourLabel = h => `${((h + 11) % 12) + 1} ${h >= 12 ? 'pm' : 'am'}`;
+  const sinceDose = h => { const t = Math.round(h * 60); const hh = Math.floor(t / 60), mm = t % 60; return hh ? `${hh} h${mm ? ` ${mm} min` : ''}` : `${mm} min`; };
+  const f = (v, d) => v === null || v === undefined ? '—' : v.toFixed(d);
+  const svgEl = (tag, attrs) => { const el = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; };
+  const niceTicks = (lo, hi, count = 5) => { const raw = (hi - lo) / count, mag = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw); const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(Number(v.toFixed(6))); return out; };
+  const niceMax = (v, step) => Math.ceil(v / step) * step;
+
+  // ----- data -----
+  const days = D.daily.map(d => ({ date: d.date, checks: D.checks.filter(c => c.date === d.date) }));
+  const fwDates = new Set(days.slice(0, 7).map(d => d.date));
+  const fw = D.checks.filter(c => fwDates.has(c.date));
+  const last3Dates = new Set(days.slice(-3).map(d => d.date));
+  const last3 = D.checks.filter(c => last3Dates.has(c.date));
+
+  // Every measured value, with how to read it. `better` is never used; direction is described, not judged.
+  const M = {
+    rest: { name: 'Rest tremor', unit: 'of 100', short: 'score', get: c => c.rest.score, d: 0, note: 'Average score each day, 0–100. Lower means less tremor was measured.' },
+    restMs2: { name: 'Rest tremor strength', unit: 'm/s²', get: c => c.rest.strength_ms2, d: 3 },
+    restHz: { name: 'Rest tremor rhythm', unit: 'Hz', get: c => c.rest.peak_hz, d: 1 },
+    posture: { name: 'Posture tremor', unit: 'of 100', short: 'score', get: c => c.posture.score, d: 0, note: 'Arm held out above the distance sensor. Lower means less tremor was measured.' },
+    postureHz: { name: 'Posture tremor rhythm', unit: 'Hz', get: c => c.posture.peak_hz, d: 1 },
+    held: { name: 'Time held in place', unit: 's', get: c => c.posture.valid_s, d: 1 },
+    reach: { name: 'Reach wobble', unit: 'mm', get: c => c.reach.smoothness_mm, d: 1, note: 'Fingertip lowered toward the distance sensor. Lower means a smoother reach.' },
+    wobble: { name: 'Wobble at the end of the reach', unit: '×', get: c => c.reach.wobble_ratio, d: 2 },
+    tapL: { name: 'Tapping speed, left', unit: 'taps/s', get: c => c.tap.left.taps_per_sec, d: 1 },
+    tapR: { name: 'Tapping speed, right', unit: 'taps/s', get: c => c.tap.right.taps_per_sec, d: 1 },
+    tap: { name: 'Tapping speed', unit: 'taps/s', get: c => (c.tap.left.taps_per_sec + c.tap.right.taps_per_sec) / 2, d: 1, note: 'Thumb and finger taps in 10 seconds, each hand. Higher means faster tapping.' },
+    decL: { name: 'Tap size change, left', unit: '%', get: c => c.tap.left.decrement * 100, d: 0 },
+    decR: { name: 'Tap size change, right', unit: '%', get: c => c.tap.right.decrement * 100, d: 0 },
+    cvL: { name: 'Rhythm variability, left', unit: '%', get: c => c.tap.left.rhythm_cv * 100, d: 0 },
+    cvR: { name: 'Rhythm variability, right', unit: '%', get: c => c.tap.right.rhythm_cv * 100, d: 0 },
+  };
+  const usual = k => ({ lo: quantile(fw.map(M[k].get), 0.25), hi: quantile(fw.map(M[k].get), 0.75), n: vals(fw.map(M[k].get)).length });
+  const dayMean = (d, k) => mean(d.checks.map(M[k].get));
+  const ratio = (v, u) => (v - u) / Math.abs(u);
+  const word = (v, u) => Math.abs(ratio(v, u)) < 0.1 ? 'About the same' : ratio(v, u) > 0 ? 'Higher' : 'Lower';
+  const wordIcon = (v, u) => Math.abs(ratio(v, u)) < 0.1 ? ICON.same : ratio(v, u) > 0 ? ICON.up : ICON.down;
+  const scoreMax = niceMax(Math.max(...D.checks.flatMap(c => [c.rest.score, c.posture.score])) + 5, 10);
+  const restUsual = usual('rest');
+  const restStatus = v => v === null ? 'No checks' : v > restUsual.hi ? 'Above your usual range' : v < restUsual.lo ? 'Below your usual range' : 'Within your usual range';
+
+  // ----- state & routing -----
+  let range = 14;
+  const drawn = new Set();
+  const route = () => {
+    const m = location.hash.match(/^#(?:day\/(\d{4}-\d{2}-\d{2}))?\/?(detailed)?$/) || [];
+    const date = m[1] && days.some(d => d.date === m[1]) ? m[1] : null;
+    return { date, mode: m[2] ? 'detailed' : 'simple' };
+  };
+  const hashFor = (date, mode) => `#${date ? `day/${date}` : ''}${mode === 'detailed' ? `${date ? '/' : ''}detailed` : ''}`;
+  const go = hash => { const run = () => { if (location.hash !== hash && !(hash === '#' && !location.hash)) location.hash = hash; else render(); }; document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches ? document.startViewTransition(run) : run(); };
+  let lastDate = null;
+  addEventListener('hashchange', () => { const moved = route().date !== lastDate; render(); if (moved) scrollTo({ top: 0 }); });
+  document.querySelector('[data-go="overview"]').addEventListener('click', e => { e.preventDefault(); go(hashFor(null, route().mode)); });
+
+  // ----- generic chart -----
+  // o: xDomain, yDomain, yTicks, yFmt, xTicks [{v,label,n}], band, vlines [{x,label}], series [{label,color,dash,width,points[{x,y,col}],line,dots,hollow,r,values}], cols [{a,b,tip,aria,pick}], endLabels, height
+  let observers = [];
+  function plot(host, o) {
+    const first = !drawn.has(host.id); drawn.add(host.id);
+    const W = host.clientWidth, narrow = W < 560;
+    const H = o.height ?? (narrow ? 230 : 270);
+    const hasN = o.xTicks.some(t => t.n !== undefined);
+    const m = { l: o.left ?? 42, r: o.endLabels ? 50 : 12, t: o.vlines && o.vlines.length ? 32 : 14, b: hasN ? 56 : 30 };
+    const [x0, x1] = o.xDomain, [y0, y1] = o.yDomain, iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const X = v => m.l + iw * (v - x0) / (x1 - x0), Y = v => m.t + ih * (1 - (v - y0) / (y1 - y0));
+    host.innerHTML = '';
+    const svg = svgEl('svg', { class: 'plot', viewBox: `0 0 ${W} ${H}`, height: H, 'aria-hidden': 'true' });
+    const hl = svgEl('rect', { y: m.t - 4, height: ih + 8, rx: 8, fill: '#eaf3ff', opacity: 0 }); svg.append(hl);
+    for (const v of o.yTicks) {
+      svg.append(svgEl('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: v === y0 ? '#c9d6ea' : '#e3eaf5' }));
+      const t = svgEl('text', { x: m.l - 9, y: Y(v) + 4, 'text-anchor': 'end', fill: MUTED, 'font-size': 12, class: 'num' }); t.textContent = o.yFmt ? o.yFmt(v) : v; svg.append(t);
+    }
+    if (o.band) {
+      svg.append(svgEl('rect', { x: m.l, y: Y(o.band.hi), width: iw, height: Math.max(0, Y(o.band.lo) - Y(o.band.hi)), fill: BLUE, 'fill-opacity': 0.09 }));
+      for (const v of [o.band.lo, o.band.hi]) svg.append(svgEl('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: BLUE, 'stroke-opacity': 0.45, 'stroke-dasharray': '4 4' }));
+      if (!o.band.quiet) { const t = svgEl('text', { x: m.l + 8, y: Y(o.band.hi) - 7, fill: MUTED, 'font-size': 12 }); t.textContent = 'Your usual range'; svg.append(t); }
+    }
+    for (const vl of o.vlines ?? []) {
+      svg.append(svgEl('line', { x1: X(vl.x), x2: X(vl.x), y1: m.t - 8, y2: m.t + ih, stroke: vl.color ?? '#8a6a1f', 'stroke-width': 1.5, 'stroke-dasharray': '3 4' }));
+      const t = svgEl('text', { x: X(vl.x), y: m.t - 14, 'text-anchor': 'middle', fill: vl.ink ?? '#6b5216', 'font-size': 12, 'font-weight': 600 }); t.textContent = vl.label; svg.append(t);
+    }
+    const dotEls = [];
+    o.series.forEach(s => {
+      const pts = s.points;
+      if (s.line !== false) {
+        let d = '', pen = false;
+        for (const p of pts) { if (p.y === null || p.y === undefined) { pen = false; continue; } d += `${pen ? 'L' : 'M'}${X(p.x).toFixed(1)},${Y(p.y).toFixed(1)}`; pen = true; }
+        const path = svgEl('path', { d, fill: 'none', stroke: s.color, 'stroke-width': s.width ?? 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-opacity': s.opacity ?? 1 });
+        if (s.dash) path.setAttribute('stroke-dasharray', s.dash);
+        svg.append(path);
+        if (first && !s.dash && d) { const len = path.getTotalLength(); path.style.setProperty('--len', len); path.setAttribute('class', 'draw'); }
+      }
+      if (s.dots !== false) pts.forEach((p, i) => {
+        if (p.y === null || p.y === undefined) return;
+        const r = s.r ?? 4.5;
+        const c = svgEl('circle', { cx: X(p.x), cy: Y(p.y), r, fill: s.hollow ? '#fff' : s.color, stroke: s.hollow ? s.color : '#fff', 'stroke-width': s.hollow ? 2 : 2, 'fill-opacity': s.dotOpacity ?? 1 });
+        if (first) { c.setAttribute('class', 'fade'); c.style.animationDelay = `${0.1 + (i / Math.max(1, pts.length)) * 0.8}s`; }
+        svg.append(c); dotEls.push({ c, col: p.col, r });
+        if (s.values) { const t = svgEl('text', { x: X(p.x), y: Y(p.y) - 13, 'text-anchor': 'middle', fill: INK, 'font-size': 14, 'font-weight': 700, class: 'num', 'paint-order': 'stroke', stroke: '#fff', 'stroke-width': 4 }); t.textContent = s.fmt ? s.fmt(p.y) : p.y; svg.append(t); }
+      });
+      if (o.endLabels) {
+        const lastP = [...pts].reverse().find(p => p.y !== null && p.y !== undefined);
+        if (lastP) { const t = svgEl('text', { x: X(lastP.x) + 10, y: Y(lastP.y) + (s.labelDy ?? 4), fill: INK, 'font-size': 12.5, 'font-weight': 600 }); t.textContent = s.label; svg.append(t); }
+      }
+    });
+    for (const t of o.xTicks) {
+      const a = svgEl('text', { x: X(t.v), y: H - m.b + 20, 'text-anchor': 'middle', fill: INK, 'font-size': 12.5 }); a.textContent = t.label; svg.append(a);
+      if (t.n !== undefined) { const n = svgEl('text', { x: X(t.v), y: H - m.b + 39, 'text-anchor': 'middle', fill: MUTED, 'font-size': 12, class: 'num' }); n.textContent = t.n; svg.append(n); }
+    }
+    if (hasN) { const n = svgEl('text', { x: m.l - 9, y: H - m.b + 39, 'text-anchor': 'end', fill: MUTED, 'font-size': 11 }); n.textContent = 'n'; svg.append(n); }
+    if (o.xLabel) { const t = svgEl('text', { x: W - m.r, y: H - 2, 'text-anchor': 'end', fill: MUTED, 'font-size': 12 }); t.textContent = o.xLabel; svg.append(t); }
+    host.append(svg);
+
+    const tip = document.createElement('div'); tip.className = 'tip'; tip.setAttribute('aria-hidden', 'true'); host.append(tip);
+    (o.cols ?? []).forEach((col, i) => {
+      const left = X(col.a), width = X(col.b) - X(col.a);
+      const show = () => {
+        hl.setAttribute('x', left); hl.setAttribute('width', width); hl.setAttribute('opacity', 1);
+        dotEls.forEach(e => e.c.setAttribute('r', e.col === i ? e.r + 2.5 : e.r));
+        tip.innerHTML = col.tip; tip.classList.add('on');
+        const tw = tip.offsetWidth;
+        let x = left + width + 8; if (x + tw > W) x = left - tw - 8; if (x < 0) x = Math.max(0, Math.min(W - tw, left + width / 2 - tw / 2));
+        tip.style.left = `${x}px`; tip.style.top = `${m.t - 6}px`;
+      };
+      const hide = () => { tip.classList.remove('on'); hl.setAttribute('opacity', 0); dotEls.forEach(e => e.c.setAttribute('r', e.r)); };
+      const b = document.createElement('button');
+      b.className = 'hit'; Object.assign(b.style, { left: `${left}px`, width: `${width}px`, height: `${H - 6}px` });
+      b.setAttribute('aria-label', col.aria);
+      if (!col.pick) b.tabIndex = -1;
+      b.addEventListener('pointerenter', show); b.addEventListener('focus', show);
+      b.addEventListener('pointerleave', hide); b.addEventListener('blur', hide);
+      if (col.pick) b.addEventListener('click', col.pick); else b.style.cursor = 'default';
+      host.append(b);
+    });
+  }
+  function mount(id, build) {
+    const host = document.getElementById(id); if (!host) return;
+    build(host);
+    let w = host.clientWidth;
+    const ro = new ResizeObserver(() => { if (host.clientWidth !== w) { w = host.clientWidth; build(host); } });
+    ro.observe(host); observers.push(ro);
+  }
+
+  // Day-column charts across the period: one column per day, click a column to open that day.
+  function dayTicks(host, shown) {
+    const narrow = host.clientWidth < 560;
+    const every = Math.max(1, Math.ceil(shown.length / Math.max(2, Math.floor((host.clientWidth - 70) / (narrow ? 34 : 64)))));
+    return shown.map((d, i) => ({ d, i })).filter(({ i }) => (shown.length - 1 - i) % every === 0)
+      .map(({ d, i }, j) => ({ v: i + 0.5, label: narrow && j > 0 ? fmt(d.date, { day: 'numeric' }) : shortDate(d.date), n: d.checks.length }));
+  }
+  function dayCols(shown, rows) {
+    return shown.map((d, i) => ({
+      a: i, b: i + 1,
+      tip: `<b>${longDate(d.date)}</b>${rows.map(r => { const v = dayMean(d, r.k); return `<div class="row"><span>${r.label}</span><strong class="num">${f(v, M[r.k].d)} ${r.unit ?? ''}</strong></div>`; }).join('')}<div class="tm">${d.checks.length} checks</div><div class="tc">Click to see this day →</div>`,
+      aria: `${longDate(d.date)}: ${rows.map(r => `${r.label} ${f(dayMean(d, r.k), M[r.k].d)}`).join(', ')}, ${d.checks.length} checks. Open this day.`,
+      pick: () => go(hashFor(d.date, route().mode)),
+    }));
+  }
+  const timeInDay = (i, minute) => i + 0.14 + 0.72 * Math.min(1, Math.max(0, (minute - 420) / (22 * 60 - 420)));
+  function periodChart(host, shown, cfg) {
+    const series = cfg.series.map(s => s.every
+      ? { ...s, line: false, r: 3.5, points: shown.flatMap((d, i) => d.checks.map(c => ({ x: timeInDay(i, c.minute), y: M[s.k].get(c), col: i }))) }
+      : { ...s, points: shown.map((d, i) => ({ x: i + 0.5, y: dayMean(d, s.k), col: i })) });
+    plot(host, { xDomain: [0, shown.length], yDomain: cfg.y, yTicks: niceTicks(cfg.y[0], cfg.y[1], cfg.ticks ?? 5), yFmt: cfg.yFmt, xTicks: dayTicks(host, shown), band: cfg.band, series, cols: dayCols(shown, cfg.rows), endLabels: cfg.endLabels, height: cfg.height });
+  }
+
+  // Through-one-day charts: x is clock time; doses are marked.
+  function dayTimeChart(host, d, doses, cfg) {
+    const narrow = host.clientWidth < 560;
+    const x0 = 7 * 60, x1 = 22 * 60;
+    const xTicks = []; for (let h = 8; h <= 22; h += narrow || cfg.compact ? 4 : 2) xTicks.push({ v: h * 60, label: hourLabel(h) });
+    const mids = d.checks.map(c => c.minute);
+    const cols = d.checks.map((c, i) => ({
+      a: i ? (mids[i - 1] + mids[i]) / 2 : x0, b: i < mids.length - 1 ? (mids[i] + mids[i + 1]) / 2 : x1,
+      tip: `<b>${clock(c.minute)}</b>${cfg.series.map(s => `<div class="row"><span>${s.label}</span><strong class="num">${f(M[s.k].get(c), M[s.k].d)} ${M[s.k].unit === 'of 100' ? '' : M[s.k].unit}</strong></div>`).join('')}<div class="tm">${c.hours_since_dose === null ? 'Before the first dose' : `${sinceDose(c.hours_since_dose)} after the ${c.dose_slot.toLowerCase()} dose`}</div><div class="tc">Click to find it in the table ↓</div>`,
+      aria: `${clock(c.minute)}: ${cfg.series.map(s => `${s.label} ${f(M[s.k].get(c), M[s.k].d)}`).join(', ')}. Show this check in the table.`,
+      pick: () => { const row = document.getElementById(`check-${c.id}`); if (!row) return; row.scrollIntoView({ behavior: 'smooth', block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1400); },
+    }));
+    plot(host, {
+      xDomain: [x0, x1], yDomain: cfg.y, yTicks: niceTicks(cfg.y[0], cfg.y[1], cfg.ticks ?? 5), yFmt: cfg.yFmt, xTicks, band: cfg.band, height: cfg.height,
+      vlines: doses.map(ds => ({ x: ds.minute, label: cfg.compact ? 'Dose' : `Dose ${clock(ds.minute).replace(' ', ' ')}` })),
+      series: cfg.series.map(s => ({ ...s, points: d.checks.map((c, i) => ({ x: c.minute, y: M[s.k].get(c), col: i })) })), cols, endLabels: cfg.endLabels,
+    });
+  }
+
+  // ----- shared fragments -----
+  const tabs = (date, mode) => `<div class="tabs" role="tablist" aria-label="View">
+      <button role="tab" aria-selected="${mode === 'simple'}" data-mode="simple">Simple</button>
+      <button role="tab" aria-selected="${mode === 'detailed'}" data-mode="detailed">Detailed</button>
+    </div>`;
+  const periodSeg = () => `<div class="seg" role="group" aria-label="Time period">
+      <button aria-pressed="${range === 7}" data-range="7">Last 7 days</button>
+      <button aria-pressed="${range === 14}" data-range="14">Last 14 days</button>
+    </div>`;
+  const key = items => `<div class="key" aria-hidden="true">${items.map(([cls, label]) => `<span><i class="${cls}"></i>${label}</span>`).join('')}</div>`;
+  const statLine = k => { const v = mean(last3.map(M[k].get)), u = mean(fw.map(M[k].get)); const unit = M[k].unit === 'of 100' ? '' : ` ${M[k].unit}`; return `<p class="stat">Last 3 days: <strong class="num">${f(v, M[k].d)}${unit}</strong> <span>· ${word(v, u).toLowerCase()} ${word(v, u) === 'About the same' ? 'as' : 'than'} your first week (<span class="num">${f(u, M[k].d)}${unit}</span>)</span></p>`; };
+  function wire(date, mode) {
+    app.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => go(hashFor(date, b.dataset.mode))));
+    app.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => { range = Number(b.dataset.range); drawn.clear(); render(); }));
+    app.querySelectorAll('[data-show-all]').forEach(b => b.addEventListener('click', () => { app.querySelectorAll('tr.more').forEach(r => { r.hidden = false; }); b.remove(); }));
+    app.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => go(hashFor(b.dataset.day, mode))));
+  }
+
+  // ----- overview: simple -----
+  function overviewSimple(shown) {
+    const recentAvg = mean(last3.map(M.rest.get));
+    const where = recentAvg > restUsual.hi ? 'above your usual range' : recentAvg < restUsual.lo ? 'below your usual range' : 'within your usual range';
+    const total = shown.reduce((a, d) => a + d.checks.length, 0);
+    const mark = v => v === null ? '' : v > restUsual.hi ? `<small>${ICON.up} above usual</small>` : v < restUsual.lo ? `<small>${ICON.down} below usual</small>` : '';
+    return `
+      <p class="summary">Over the last 3 days your rest tremor averaged <strong class="num">${Math.round(recentAvg)}</strong>, <strong>${where}</strong> <span class="num" style="white-space:nowrap">(${Math.round(restUsual.lo)} to ${Math.round(restUsual.hi)}).</span></p>
+      <div class="controls">${tabs(null, 'simple')}${periodSeg()}</div>
+      <div class="stack" role="tabpanel">
+        <section class="card" aria-labelledby="t-rest">
+          <div class="card-head"><div><h2 id="t-rest">Rest tremor, day by day</h2><p>${M.rest.note} <span class="num">${total}</span> checks.</p></div>${key([['k-line', 'Daily average'], ['k-band', 'Your usual range']])}</div>
+          <div class="chart" id="c-rest"></div>
+          <p class="chart-note">${ICON.tap}Tap any day on a chart, or in the list below, to see that day’s checks.</p>
+        </section>
+        <div class="grid2">
+          <section class="card" aria-labelledby="t-posture">
+            <div class="card-head"><div><h2 id="t-posture">Posture tremor</h2><p>${M.posture.note}</p></div></div>
+            ${statLine('posture')}
+            <div class="chart" id="c-posture"></div>
+          </section>
+          <section class="card" aria-labelledby="t-reach">
+            <div class="card-head"><div><h2 id="t-reach">Reach (distance sensor)</h2><p>${M.reach.note}</p></div></div>
+            ${statLine('reach')}
+            <div class="chart" id="c-reach"></div>
+          </section>
+        </div>
+        <section class="card" aria-labelledby="t-tap">
+          <div class="card-head"><div><h2 id="t-tap">Tapping speed, left and right hand</h2><p>${M.tap.note}</p></div>${key([['k-line', 'Left hand'], ['k-line dash', 'Right hand']])}</div>
+          <p class="stat">Last 3 days: <strong class="num">${f(mean(last3.map(M.tapL.get)), 1)}</strong> <span>taps/s left ·</span> <strong class="num">${f(mean(last3.map(M.tapR.get)), 1)}</strong> <span>taps/s right · first week ${f(mean(fw.map(M.tapL.get)), 1)} and ${f(mean(fw.map(M.tapR.get)), 1)}</span></p>
+          <div class="chart" id="c-tap"></div>
+        </section>
+        <section class="card" aria-labelledby="t-days">
+          <div class="card-head"><div><h2 id="t-days">Each day</h2><p>Daily averages for every test. Your usual range comes from your first week (<span class="num">${restUsual.n}</span> checks).</p></div></div>
+          <div class="daylist">
+            <div class="dl-head" aria-hidden="true"><span>Day</span><span>Rest tremor<small>of 100</small></span><span>Posture tremor<small>of 100</small></span><span>Reach wobble<small>mm</small></span><span>Tapping<small>taps/s</small></span><span></span></div>
+            ${[...shown].reverse().map(d => { const r = dayMean(d, 'rest'); return `<button class="dl-row" data-day="${d.date}" aria-label="${longDate(d.date)}: rest tremor ${f(r, 0)}, ${restStatus(r).toLowerCase()}; posture ${f(dayMean(d, 'posture'), 0)}; reach wobble ${f(dayMean(d, 'reach'), 1)} mm; tapping ${f(dayMean(d, 'tap'), 1)} taps per second; ${d.checks.length} checks. Open this day.">
+              <span class="d">${weekday(d.date)} ${shortDate(d.date)}<small>${d.checks.length} checks</small></span>
+              <span class="v num"><span class="lab">Rest</span>${f(r, 0)}${mark(r)}</span>
+              <span class="v num"><span class="lab">Posture</span>${f(dayMean(d, 'posture'), 0)}</span>
+              <span class="v num"><span class="lab">Reach mm</span>${f(dayMean(d, 'reach'), 1)}</span>
+              <span class="v num"><span class="lab">Taps/s</span>${f(dayMean(d, 'tap'), 1)}</span>
+              ${ICON.right}</button>`; }).join('')}
+          </div>
+        </section>
+      </div>`;
+  }
+  function mountOverviewSimple(shown) {
+    const reachMax = niceMax(Math.max(...D.checks.map(M.reach.get)) + 0.5, 1);
+    const tapMax = niceMax(Math.max(...D.checks.flatMap(c => [M.tapL.get(c), M.tapR.get(c)])) + 0.5, 1);
+    mount('c-rest', h => periodChart(h, shown, { y: [0, scoreMax], band: restUsual, height: h.clientWidth < 560 ? 270 : 320, rows: [{ k: 'rest', label: 'Rest tremor' }], series: [{ k: 'rest', label: 'Rest tremor', color: BLUE, r: 5 }] }));
+    mount('c-posture', h => periodChart(h, shown, { y: [0, scoreMax], band: { ...usual('posture'), quiet: true }, rows: [{ k: 'posture', label: 'Posture tremor' }], series: [{ k: 'posture', label: 'Posture tremor', color: BLUE }] }));
+    mount('c-reach', h => periodChart(h, shown, { y: [0, reachMax], band: { ...usual('reach'), quiet: true }, yFmt: v => v, rows: [{ k: 'reach', label: 'Reach wobble', unit: 'mm' }], series: [{ k: 'reach', label: 'Reach wobble', color: BLUE }] }));
+    mount('c-tap', h => periodChart(h, shown, { y: [0, tapMax], endLabels: true, rows: [{ k: 'tapL', label: 'Left hand', unit: 'taps/s' }, { k: 'tapR', label: 'Right hand', unit: 'taps/s' }],
+      series: [{ k: 'tapL', label: 'Left', color: BLUE, labelDy: 14 }, { k: 'tapR', label: 'Right', color: NAVY, dash: '6 5', hollow: true, labelDy: -6 }] }));
+  }
+
+  // ----- overview: detailed -----
+  function profileTable(cols, keys) {
+    return `<div class="scroll" tabindex="0" role="region" aria-label="Every measure compared"><table class="data profile">
+      <thead><tr><th>Measure</th>${cols.map(c => `<th class="sep">${c.label}<small>n=${c.set.length} checks</small></th>`).join('')}<th>Change</th></tr></thead>
+      <tbody>${keys.map(k => { const vs = cols.map(c => mean(c.set.map(M[k].get))); const [a, b] = [vs[vs.length - 1], vs[0]]; return `<tr><td>${M[k].name} <span class="muted">(${M[k].unit})</span></td>${vs.map(v => `<td class="sep num">${f(v, M[k].d)}</td>`).join('')}<td><span class="change">${wordIcon(a, b)}${word(a, b)}</span></td></tr>`; }).join('')}</tbody>
+    </table></div>`;
+  }
+  const ALL_KEYS = ['rest', 'restMs2', 'restHz', 'posture', 'postureHz', 'held', 'reach', 'wobble', 'tapL', 'tapR', 'decL', 'decR', 'cvL', 'cvR'];
+  function rawTable(checks, withDate, limit = Infinity) {
+    return `<div class="scroll" tabindex="0" role="region" aria-label="All check data"><table class="data">
+      <thead>
+        <tr class="group"><th></th><th class="sep" colspan="3">Rest</th><th class="sep" colspan="3">Posture</th><th class="sep" colspan="2">Reach</th><th class="sep" colspan="6">Tapping (left / right)</th></tr>
+        <tr><th>${withDate ? 'Check' : 'Time'}</th><th class="sep">Score<small>of 100</small></th><th>Strength<small>m/s²</small></th><th>Rhythm<small>Hz</small></th><th class="sep">Score<small>of 100</small></th><th>Rhythm<small>Hz</small></th><th>Held<small>s</small></th><th class="sep">Wobble<small>mm</small></th><th>End wobble<small>×</small></th><th class="sep">Speed L<small>taps/s</small></th><th>Speed R<small>taps/s</small></th><th>Size L<small>%</small></th><th>Size R<small>%</small></th><th>Rhythm L<small>% var.</small></th><th>Rhythm R<small>% var.</small></th></tr>
+      </thead>
+      <tbody>${checks.map((c, i) => `<tr id="check-${c.id}"${i >= limit ? ' class="more" hidden' : ''}><td>${withDate ? `<button class="dlink" data-day="${c.date}">${weekday(c.date)} ${shortDate(c.date)}, ${clock(c.minute)}<small>${c.hours_since_dose === null ? 'before first dose' : `${sinceDose(c.hours_since_dose)} after dose`}</small></button>` : `<strong>${clock(c.minute)}</strong><br><span class="muted">${c.hours_since_dose === null ? 'before first dose' : `${sinceDose(c.hours_since_dose)} after dose`}</span>`}</td>
+        <td class="sep num">${f(c.rest.score, 0)}</td><td class="num">${f(c.rest.strength_ms2, 3)}</td><td class="num">${f(c.rest.peak_hz, 1)}</td>
+        <td class="sep num">${f(c.posture.score, 0)}</td><td class="num">${f(c.posture.peak_hz, 1)}</td><td class="num">${f(c.posture.valid_s, 1)}</td>
+        <td class="sep num">${f(c.reach.smoothness_mm, 1)}</td><td class="num">${f(c.reach.wobble_ratio, 2)}</td>
+        <td class="sep num">${f(c.tap.left.taps_per_sec, 1)}</td><td class="num">${f(c.tap.right.taps_per_sec, 1)}</td><td class="num">${f(M.decL.get(c), 0)}</td><td class="num">${f(M.decR.get(c), 0)}</td><td class="num">${f(M.cvL.get(c), 0)}</td><td class="num">${f(M.cvR.get(c), 0)}</td></tr>`).join('')}</tbody>
+    </table></div>${checks.length > limit ? `<button class="show-all" data-show-all>Show all ${checks.length} checks</button>` : ''}`;
+  }
+  function overviewDetailed(shown) {
+    const set = shown.flatMap(d => d.checks);
+    const ret = D.summary.returns_after_h;
+    return `
+      <p class="summary">Every check and every measure, for a closer look with your care team. Dots are single checks; lines are daily averages.</p>
+      <div class="controls">${tabs(null, 'detailed')}${periodSeg()}</div>
+      <div class="stack" role="tabpanel">
+        <section class="card" aria-labelledby="t-dose">
+          <div class="card-head"><div><h2 id="t-dose">Rest tremor by time since a dose</h2><p>Mean rest tremor strength in half-hour steps after each logged dose, from all ${D.checks.length} checks. The number of checks behind each point is shown under the axis.</p></div>${key([['k-line', 'Mean strength (m/s²)'], ['k-dose', 'Rises again']])}</div>
+          <p class="stat">${ret === null ? 'Not enough checks after doses yet to show when tremor rises again.' : `Rest tremor rises above its usual level again about <strong class="num">${ret} h</strong> <span>after a dose.</span>`}</p>
+          <div class="chart" id="c-dose"></div>
+        </section>
+        <div class="grid2">
+          <section class="card" aria-labelledby="t-rest-all">
+            <div class="card-head"><div><h2 id="t-rest-all">Rest tremor, every check</h2><p>Score 0–100. Each dot is one check, placed by time of day within its date.</p></div></div>
+            <div class="chart" id="c-rest-all"></div>
+          </section>
+          <section class="card" aria-labelledby="t-posture-all">
+            <div class="card-head"><div><h2 id="t-posture-all">Posture tremor, every check</h2><p>Score 0–100, arm held out above the distance sensor.</p></div></div>
+            <div class="chart" id="c-posture-all"></div>
+          </section>
+        </div>
+        <section class="card" aria-labelledby="t-hz">
+          <div class="card-head"><div><h2 id="t-hz">Tremor rhythm</h2><p>The main frequency of the measured movement, in hertz (beats per second). Checks with no clear rhythm are left out.</p></div>${key([['k-dot', 'Rest'], ['k-dot hollow', 'Posture']])}</div>
+          <div class="chart" id="c-hz"></div>
+        </section>
+        <div class="grid2">
+          <section class="card" aria-labelledby="t-reach-all">
+            <div class="card-head"><div><h2 id="t-reach-all">Reach wobble</h2><p>Sideways wobble along the reach, in mm, from the distance sensor.</p></div></div>
+            <div class="chart" id="c-reach-all"></div>
+          </section>
+          <section class="card" aria-labelledby="t-wobble">
+            <div class="card-head"><div><h2 id="t-wobble">Wobble at the end of the reach</h2><p>Wobble in the last part of the reach compared with the middle (×).</p></div></div>
+            <div class="chart" id="c-wobble"></div>
+          </section>
+        </div>
+        <div class="grid3">
+          <section class="card" aria-labelledby="t-tap-speed">
+            <div class="card-head"><div><h2 id="t-tap-speed">Tapping speed</h2><p>Taps per second.</p></div></div>
+            <div class="chart" id="c-tap-speed"></div>
+          </section>
+          <section class="card" aria-labelledby="t-tap-size">
+            <div class="card-head"><div><h2 id="t-tap-size">Tap size change</h2><p>Change in tap size from start to end of 10 s (%).</p></div></div>
+            <div class="chart" id="c-tap-size"></div>
+          </section>
+          <section class="card" aria-labelledby="t-tap-cv">
+            <div class="card-head"><div><h2 id="t-tap-cv">Tap rhythm variability</h2><p>How much the gap between taps varies (%).</p></div></div>
+            <div class="chart" id="c-tap-cv"></div>
+          </section>
+        </div>
+        <p class="key" aria-hidden="true" style="margin-top:-8px"><span><i class="k-line"></i>Left hand</span><span><i class="k-line dash"></i>Right hand</span></p>
+        <section class="card" aria-labelledby="t-profile">
+          <div class="card-head"><div><h2 id="t-profile">First week compared with the last 3 days</h2><p>Your own averages only. “About the same” means within 10%.</p></div></div>
+          ${profileTable([{ label: 'First week', set: fw }, { label: 'Last 3 days', set: last3 }], ALL_KEYS)}
+        </section>
+        <section class="card" aria-labelledby="t-raw">
+          <div class="card-head"><div><h2 id="t-raw">All checks</h2><p>${set.length} checks in this period, newest first. Select a check to open its day.</p></div></div>
+          ${rawTable([...set].reverse(), true, 12)}
+        </section>
+      </div>`;
+  }
+  function mountOverviewDetailed(shown) {
+    const set = shown.flatMap(d => d.checks);
+    const binMax = niceMax(Math.max(...D.bins.map(b => b.mean)) * 1.15, 0.1);
+    const ret = D.summary.returns_after_h;
+    mount('c-dose', h => plot(h, {
+      xDomain: [0, 6], yDomain: [0, binMax], yTicks: niceTicks(0, binMax, 4), yFmt: v => v.toFixed(2), left: 46,
+      xTicks: [0, 1, 2, 3, 4, 5, 6].map(v => ({ v, label: v ? `${v} h` : 'Dose' })).concat(D.bins.map(b => ({ v: b.start_h + 0.25, label: '', n: b.count }))),
+      vlines: ret === null ? [] : [{ x: ret, label: `Rises again ≈ ${ret} h` }],
+      series: [{ label: 'Mean', color: BLUE, points: D.bins.map((b, i) => ({ x: b.start_h + 0.25, y: b.mean, col: i })) }],
+      cols: D.bins.map(b => ({ a: b.start_h, b: b.start_h + 0.5, tip: `<b>${b.start_h}–${b.start_h + 0.5} h after a dose</b><div class="row"><span>Mean strength</span><strong class="num">${b.mean.toFixed(3)} m/s²</strong></div><div class="tm">${b.count} checks${b.count < 3 ? ' · fewer than 3, less certain' : ''}</div>`, aria: `${b.start_h} to ${b.start_h + 0.5} hours after a dose: mean ${b.mean.toFixed(3)} metres per second squared, ${b.count} checks.` })),
+      height: h.clientWidth < 560 ? 270 : 320,
+    }));
+    const every = (id, k, y, ticks, fmtY, d2) => mount(id, h => periodChart(h, shown, { y, ticks, yFmt: fmtY, band: d2 ? null : { ...usual(k), quiet: true }, rows: [{ k, label: M[k].name, unit: M[k].unit === 'of 100' ? '' : M[k].unit }],
+      series: [{ k, label: M[k].name, color: BLUE, every: true, dotOpacity: 0.55 }, { k, label: 'Daily average', color: BLUE, dots: false, width: 2 }] }));
+    every('c-rest-all', 'rest', [0, scoreMax], 5);
+    every('c-posture-all', 'posture', [0, scoreMax], 5);
+    every('c-reach-all', 'reach', [0, niceMax(Math.max(...set.map(M.reach.get)) + 0.5, 1)], 4);
+    every('c-wobble', 'wobble', [0, niceMax(Math.max(...set.map(M.wobble.get)) + 0.2, 0.5)], 4, v => v.toFixed(1));
+    const hz = set.flatMap(c => [c.rest.peak_hz, c.posture.peak_hz]).filter(Boolean);
+    mount('c-hz', h => periodChart(h, shown, { y: [Math.floor(Math.min(...hz)) - 1, Math.ceil(Math.max(...hz)) + 1], ticks: 4, yFmt: v => `${v}`, rows: [{ k: 'restHz', label: 'Rest', unit: 'Hz' }, { k: 'postureHz', label: 'Posture', unit: 'Hz' }],
+      series: [{ k: 'restHz', label: 'Rest', color: BLUE, every: true }, { k: 'postureHz', label: 'Posture', color: NAVY, every: true, hollow: true }] }));
+    const lr = (id, kl, kr, y, fmtY) => mount(id, h => periodChart(h, shown, { y, ticks: 4, yFmt: fmtY, height: 220, rows: [{ k: kl, label: 'Left', unit: M[kl].unit }, { k: kr, label: 'Right', unit: M[kr].unit }],
+      series: [{ k: kl, label: 'Left', color: BLUE, r: 3.5 }, { k: kr, label: 'Right', color: NAVY, dash: '6 5', hollow: true, r: 3.5 }] }));
+    lr('c-tap-speed', 'tapL', 'tapR', [0, niceMax(Math.max(...set.flatMap(c => [M.tapL.get(c), M.tapR.get(c)])) + 0.5, 1)]);
+    lr('c-tap-size', 'decL', 'decR', [-20, 0], v => `${v}`);
+    lr('c-tap-cv', 'cvL', 'cvR', [0, niceMax(Math.max(...set.flatMap(c => [M.cvL.get(c), M.cvR.get(c)])) + 2, 5)]);
+  }
+
+  // ----- day views -----
+  function dayHeader(d, mode) {
+    const i = days.indexOf(d), prev = days[i - 1], next = days[i + 1];
+    const doses = D.doses.filter(x => x.date === d.date);
+    const r = dayMean(d, 'rest');
+    return `
+      <button class="back" data-back>${ICON.back}All days</button>
+      <div class="day-head">
+        <div>
+          <h1 tabindex="-1">${longDate(d.date)}</h1>
+          <p class="facts"><span>Average rest tremor <strong class="num">${Math.round(r)}</strong></span><span><strong>${restStatus(r)}</strong></span><span><strong class="num">${d.checks.length}</strong> checks</span><span><strong class="num">${doses.length}</strong> doses logged</span></p>
+        </div>
+        <div class="stepper">
+          <button data-step="${prev ? prev.date : ''}" ${prev ? '' : 'disabled'} aria-label="Previous day${prev ? `, ${longDate(prev.date)}` : ''}">${ICON.left}${prev ? shortDate(prev.date) : 'Previous'}</button>
+          <button data-step="${next ? next.date : ''}" ${next ? '' : 'disabled'} aria-label="Next day${next ? `, ${longDate(next.date)}` : ''}">${next ? shortDate(next.date) : 'Next'}${ICON.right}</button>
+        </div>
+      </div>
+      <div class="controls">${tabs(d.date, mode)}</div>`;
+  }
+  function daySimple(d) {
+    const cmp = ['rest', 'posture', 'reach', 'tap'].map(k => ({ k, v: dayMean(d, k), u: mean(fw.map(M[k].get)) }));
+    return `
+      <div class="stack" role="tabpanel">
+        <section class="card" aria-labelledby="t-through">
+          <div class="card-head"><div><h2 id="t-through">Through the day</h2><p>Rest tremor at each check, with the times you logged a dose.</p></div>${key([['k-line', 'Rest tremor'], ['k-dose', 'Dose'], ['k-band', 'Your usual range']])}</div>
+          <div class="chart" id="d-rest"></div>
+        </section>
+        <section class="card" aria-labelledby="t-cmp">
+          <div class="card-head"><div><h2 id="t-cmp">This day compared with your first week</h2><p>Your own average from your first 7 days, n=<span class="num">${fw.length}</span> checks.</p></div></div>
+          <div class="compare">${cmp.map(t => `<div><h3>${M[t.k].name}</h3><p class="cv num">${f(t.v, M[t.k].d)}<small>${M[t.k].unit}</small></p><p class="cu num">First week ${f(t.u, M[t.k].d)}${M[t.k].unit === 'of 100' ? '' : ` ${M[t.k].unit}`}</p><span class="pill">${wordIcon(t.v, t.u)}${word(t.v, t.u)}</span></div>`).join('')}</div>
+        </section>
+        <section class="card" aria-labelledby="t-checks">
+          <div class="card-head"><div><h2 id="t-checks">Every check this day</h2><p>Rest, posture and reach use your right hand. Tapping uses both.</p></div></div>
+          <table class="checks">
+            <thead><tr><th>Time</th><th>Rest tremor<small>of 100</small></th><th>Posture tremor<small>of 100</small></th><th>Reach wobble<small>mm</small></th><th>Tapping speed<small>left / right, taps/s</small></th><th><span class="vh">Open</span></th></tr></thead>
+            <tbody>${d.checks.map(c => `<tr id="check-${c.id}">
+              <td class="when"><span class="big num">${clock(c.minute)}</span><small>${c.hours_since_dose === null ? 'Before the first dose' : `${sinceDose(c.hours_since_dose)} after the ${c.dose_slot.toLowerCase()} dose`}</small></td>
+              <td data-l="Rest tremor (of 100)"><span class="big num">${f(c.rest.score, 0)}</span><small>${c.rest.peak_hz ? `${c.rest.peak_hz.toFixed(1)} Hz rhythm` : 'No clear rhythm'}</small></td>
+              <td data-l="Posture tremor (of 100)"><span class="big num">${f(c.posture.score, 0)}</span><small class="num">${c.posture.valid_s} s held in place</small></td>
+              <td data-l="Reach wobble (mm)"><span class="big num">${f(c.reach.smoothness_mm, 1)}</span><small class="num">${c.reach.wobble_ratio.toFixed(1)}× wobble at the end</small></td>
+              <td data-l="Tapping, left / right (taps/s)"><span class="big num">${f(c.tap.left.taps_per_sec, 1)} / ${f(c.tap.right.taps_per_sec, 1)}</span><small class="num">Rhythm varies ${Math.round(((c.tap.left.rhythm_cv + c.tap.right.rhythm_cv) / 2) * 100)}%</small></td>
+              <td class="go"><a href="#" data-results>Full results ${ICON.arrow}</a></td></tr>`).join('')}</tbody>
+          </table>
+          <p class="foot-note">Scores are compared only with your own earlier checks. They describe movement the sensors measured and are meant for tracking change over time.</p>
+        </section>
+      </div>`;
+  }
+  function dayDetailed(d) {
+    return `
+      <div class="stack" role="tabpanel">
+        <p class="section-title">Every measure through the day. Dashed lines are logged doses.</p>
+        <div class="grid2">
+          <section class="card" aria-labelledby="t-d1"><div class="card-head"><div><h2 id="t-d1">Rest tremor</h2><p>Score 0–100</p></div></div><div class="chart" id="d-rest"></div></section>
+          <section class="card" aria-labelledby="t-d2"><div class="card-head"><div><h2 id="t-d2">Posture tremor</h2><p>Score 0–100</p></div></div><div class="chart" id="d-posture"></div></section>
+          <section class="card" aria-labelledby="t-d3"><div class="card-head"><div><h2 id="t-d3">Reach wobble</h2><p>mm, distance sensor</p></div></div><div class="chart" id="d-reach"></div></section>
+          <section class="card" aria-labelledby="t-d4"><div class="card-head"><div><h2 id="t-d4">Tapping speed</h2><p>taps/s, left and right</p></div>${key([['k-line', 'Left'], ['k-line dash', 'Right']])}</div><div class="chart" id="d-tap"></div></section>
+        </div>
+        <section class="card" aria-labelledby="t-dprof">
+          <div class="card-head"><div><h2 id="t-dprof">This day compared with your first week</h2><p>Every measure. “About the same” means within 10%.</p></div></div>
+          ${profileTable([{ label: 'First week', set: fw }, { label: 'This day', set: d.checks }], ALL_KEYS)}
+        </section>
+        <section class="card" aria-labelledby="t-draw">
+          <div class="card-head"><div><h2 id="t-draw">All data from this day</h2><p>Every value recorded at each check.</p></div></div>
+          ${rawTable(d.checks, false)}
+        </section>
+      </div>`;
+  }
+  function mountDay(d, mode) {
+    const doses = D.doses.filter(x => x.date === d.date);
+    if (mode === 'simple') {
+      mount('d-rest', h => dayTimeChart(h, d, doses, { y: [0, scoreMax], band: restUsual, height: h.clientWidth < 560 ? 260 : 300, series: [{ k: 'rest', label: 'Rest tremor', color: BLUE, r: 6, values: true, fmt: v => Math.round(v) }] }));
+      return;
+    }
+    const c = { compact: true, height: 230 };
+    mount('d-rest', h => dayTimeChart(h, d, doses, { ...c, y: [0, scoreMax], band: { ...restUsual, quiet: true }, series: [{ k: 'rest', label: 'Rest', color: BLUE, values: true, fmt: v => Math.round(v) }] }));
+    mount('d-posture', h => dayTimeChart(h, d, doses, { ...c, y: [0, scoreMax], band: { ...usual('posture'), quiet: true }, series: [{ k: 'posture', label: 'Posture', color: BLUE, values: true, fmt: v => Math.round(v) }] }));
+    mount('d-reach', h => dayTimeChart(h, d, doses, { ...c, y: [0, niceMax(Math.max(...D.checks.map(M.reach.get)) + 0.5, 1)], band: { ...usual('reach'), quiet: true }, series: [{ k: 'reach', label: 'Wobble', color: BLUE, values: true, fmt: v => v.toFixed(1) }] }));
+    mount('d-tap', h => dayTimeChart(h, d, doses, { ...c, y: [0, niceMax(Math.max(...D.checks.flatMap(x => [M.tapL.get(x), M.tapR.get(x)])) + 0.5, 1)], series: [{ k: 'tapL', label: 'Left', color: BLUE }, { k: 'tapR', label: 'Right', color: NAVY, dash: '6 5', hollow: true }] }));
+  }
+
+  // ----- render -----
+  function render() {
+    observers.forEach(o => o.disconnect()); observers = [];
+    const { date, mode } = route();
+    if (date) {
+      const d = days.find(x => x.date === date);
+      app.innerHTML = `<div class="view">${dayHeader(d, mode)}${mode === 'detailed' ? dayDetailed(d) : daySimple(d)}</div>`;
+      app.querySelector('[data-back]').addEventListener('click', () => go(hashFor(null, mode)));
+      app.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => b.dataset.step && go(hashFor(b.dataset.step, mode))));
+      app.querySelectorAll('[data-results]').forEach(a => a.addEventListener('click', e => e.preventDefault()));
+      wire(date, mode);
+      mountDay(d, mode);
+      if (date !== lastDate) app.querySelector('h1').focus({ preventScroll: true });
+    } else {
+      const shown = days.slice(-range);
+      app.innerHTML = `<div class="view"><div class="page-head"><h1>Your trends</h1>${mode === 'detailed' ? overviewDetailed(shown) : overviewSimple(shown)}</div></div>`;
+      wire(null, mode);
+      mode === 'detailed' ? mountOverviewDetailed(shown) : mountOverviewSimple(shown);
+    }
+    lastDate = date;
+  }
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router'
 import { copy } from './copy'
 import { Icon } from './components/Icon'
 import { Home } from './screens/Home'
 import { HomeShell } from './home/HomeShell'
-import { History } from './screens/History'
 import { CheckFlow } from './check/CheckFlow'
 import { Placeholder } from './screens/Placeholder'
 import { DevPanel } from './screens/DevPanel'
@@ -15,6 +14,7 @@ import { Results } from './results/Results'
 import { Report } from './report/Report'
 import { Settings } from './settings/Settings'
 import { usePageTransition } from './hooks/usePageTransition'
+const TrendsScreen = lazy(() => import('./trends/TrendsScreen'))
 export default function App() {
   const [params, setParams] = useState(defaultSim)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -26,7 +26,7 @@ export default function App() {
   if (pathname === '/check-in') return <Navigate to="/check/connect" replace/>
   if (pathname.startsWith('/check/')) return <Routes><Route path="/check/:step" element={<CheckFlow stream={stream}/>}/></Routes>
   if (pathname === '/' || pathname === '/overview') return <HomeShell><Home/></HomeShell>
-  if (pathname === '/dashboard') return <HomeShell dashboard><History/></HomeShell>
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) return <HomeShell dashboard><Suspense fallback={null}><Routes><Route path="/dashboard" element={<TrendsScreen/>}/><Route path="/dashboard/day/:date" element={<TrendsScreen/>}/></Routes></Suspense></HomeShell>
   if (pathname.startsWith('/results/')) return <HomeShell><Routes><Route path="/results/:checkId" element={<Results/>}/></Routes></HomeShell>
   const nav = [['home', '/overview'], ['dashboard', '/dashboard'], ['report', '/report'], ['settings', '/settings']] as const
   return (
