@@ -27,6 +27,7 @@ export default function App() {
   if (pathname.startsWith('/check/')) return <Routes><Route path="/check/:step" element={<CheckFlow stream={stream}/>}/></Routes>
   if (pathname === '/' || pathname === '/overview') return <HomeShell><Home/></HomeShell>
   if (pathname === '/dashboard') return <HomeShell dashboard><History/></HomeShell>
+  if (pathname.startsWith('/results/')) return <HomeShell><Routes><Route path="/results/:checkId" element={<Results/>}/></Routes></HomeShell>
   const nav = [['home', '/overview'], ['dashboard', '/dashboard'], ['report', '/report'], ['settings', '/settings']] as const
   return (
     <div className="app">
@@ -56,7 +57,7 @@ export default function App() {
           </div>
         </div>
       </header>
-      <main><Routes><Route path="/dev" element={<DevPanel params={params} onChange={setParams} stream={stream}/>}/><Route path="/results/:checkId" element={<Results/>}/>{!USE_FIXTURES && <><Route path="/report" element={<Report/>}/><Route path="/settings" element={<Settings/>}/></>}{(USE_FIXTURES ? [['/dashboard', copy.nav.dashboard], ['/report', copy.nav.report], ['/settings', copy.nav.settings]] : [['/dashboard', copy.nav.dashboard]]).map(([path, title]) => <Route key={path} path={path} element={<Placeholder title={title}/>}/>)}<Route path="*" element={<Placeholder title={copy.notFound}/>}/></Routes><footer><Icon name="shield" size={16}/>{copy.footer}</footer></main>
+      <main><Routes><Route path="/dev" element={<DevPanel params={params} onChange={setParams} stream={stream}/>}/>{!USE_FIXTURES && <><Route path="/report" element={<Report/>}/><Route path="/settings" element={<Settings/>}/></>}{(USE_FIXTURES ? [['/dashboard', copy.nav.dashboard], ['/report', copy.nav.report], ['/settings', copy.nav.settings]] : [['/dashboard', copy.nav.dashboard]]).map(([path, title]) => <Route key={path} path={path} element={<Placeholder title={title}/>}/>)}<Route path="*" element={<Placeholder title={copy.notFound}/>}/></Routes><footer><Icon name="shield" size={16}/>{copy.footer}</footer></main>
     </div>
   )
 }

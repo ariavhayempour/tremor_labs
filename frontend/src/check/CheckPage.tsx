@@ -82,6 +82,7 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
   const next = steps[index + 1]
   const active = recording.phase === 'running'
   const paused = recording.phase === 'paused'
+  const counting = recording.phase === 'countdown'
   const waitingForNextRun = recording.phase === 'finished' && !complete
   const graphLabel = step === 'reach' ? copy.flow.distance : step === 'tap' ? copy.flow.fingerOpening : copy.axis
   const startLabel = step === 'connect' ? copy.flow.connect : step === 'reach' ? `${copy.flow.startAttempt} ${runs + 1}` : step === 'tap' ? runs === 0 ? copy.flow.startLeft : copy.flow.startRight : copy.flow.start
@@ -95,13 +96,13 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
           {text.instructions.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
           {step === 'tap' && <div className="test-hand"><Icon name="tap" size={18}/>{runs === 0 ? copy.flow.leftHand : copy.flow.rightHand}</div>}
           {step !== 'connect' && <div className="test-progress">
-            <span>{complete ? copy.flow.complete : active ? copy.flow.recording : paused ? copy.flow.paused : waitingForNextRun ? copy.flow.runComplete : copy.flow.ready}</span>
-            <strong>{complete ? <Icon name="check" size={20}/> : `${Math.max(0, Math.ceil(runSeconds(step) - recording.elapsed))} ${copy.flow.seconds}`}</strong>
+            <span>{complete ? copy.flow.complete : counting ? copy.flow.getReady : active ? copy.flow.recording : paused ? copy.flow.paused : waitingForNextRun ? copy.flow.runComplete : copy.flow.ready}</span>
+            <strong>{complete ? <Icon name="check" size={20}/> : counting ? `${recording.countdown} ${copy.flow.seconds}` : `${Math.max(0, Math.ceil(runSeconds(step) - recording.elapsed))} ${copy.flow.seconds}`}</strong>
             <progress aria-label={copy.flow.progress} max={runSeconds(step)} value={complete ? runSeconds(step) : recording.elapsed}/>
             {(step === 'reach' || step === 'tap') && <small>{runs} / {requiredRuns(step)} {step === 'reach' ? copy.flow.attempts : copy.flow.hands}</small>}
           </div>}
-          {!complete && <button className="test-start hover-sweep" disabled={checking || creating || (step !== 'connect' && !demo)} onClick={step === 'connect' ? () => void connect() : active ? recording.pause : paused ? recording.resume : recording.start}>
-            <Icon name={active ? 'pause' : paused ? 'play' : step === 'connect' ? 'connect' : 'play'} size={17}/>{checking ? copy.flow.connecting : active ? copy.flow.pause : paused ? copy.flow.resume : ready ? copy.sensorCheck.checkSensors : startLabel}
+          {!complete && <button className="test-start hover-sweep" disabled={checking || creating || counting || (step !== 'connect' && !demo)} onClick={step === 'connect' ? () => void connect() : active ? recording.pause : paused ? recording.resume : recording.start}>
+            <Icon name={active ? 'pause' : paused ? 'play' : step === 'connect' ? 'connect' : 'play'} size={17}/>{checking ? copy.flow.connecting : counting ? `${copy.flow.getReady} ${recording.countdown}` : active ? copy.flow.pause : paused ? copy.flow.resume : ready ? copy.sensorCheck.checkSensors : startLabel}
           </button>}
           {complete && <div className="test-completed"><Icon name="check" size={18}/>{copy.flow.complete}</div>}
           {waitingForNextRun && <p className="run-message" role="status">{step === 'tap' ? copy.flow.otherHand : copy.flow.nextReach}</p>}

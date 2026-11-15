@@ -1,18 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { RingBuf } from '../viz/ringbuf'
-import { runSeconds, type CheckStep, type SignalPoint } from './checkSession'
-export type RecordingPhase = 'ready' | 'running' | 'paused' | 'finished'
+import { COUNTDOWN_S, runSeconds, type CheckStep, type SignalPoint } from './checkSession'
+export type RecordingPhase = 'ready' | 'countdown' | 'running' | 'paused' | 'finished'
 export function useCheckRecording(step: CheckStep, onFinish: (samples?: SignalPoint[]) => void, initialSamples?: SignalPoint[]) {
   const buffer = useRef(new RingBuf(1500, 1))
   const savedSamples = useRef(initialSamples)
   useEffect(() => { buffer.current.clear(); savedSamples.current?.forEach(point => buffer.current.push(point.t, [point.value])) }, [])
   const [phase, setPhase] = useState<RecordingPhase>('ready')
   const [elapsed, setElapsed] = useState(0)
+  const [countdown, setCountdown] = useState(0)
   const [height, setHeight] = useState(220)
   const [taps, setTaps] = useState(0)
   const finish = useRef(onFinish)
   useEffect(() => { finish.current = onFinish }, [onFinish])
   const elapsedRef = useRef(0)
+  useEffect(() => {
+    if (phase !== 'countdown') return
+    const timer = window.setTimeout(() => { if (countdown > 1) setCountdown(countdown - 1); else setPhase('running') }, 1000)
+    return () => clearTimeout(timer)
+  }, [phase, countdown])
   useEffect(() => {
     if (phase !== 'running') return
     let previous = Date.now()
@@ -42,6 +48,6 @@ export function useCheckRecording(step: CheckStep, onFinish: (samples?: SignalPo
     }, 100)
     return () => clearInterval(timer)
   }, [phase, step])
-  function start() { buffer.current.clear(); elapsedRef.current = 0; setElapsed(0); setTaps(0); setPhase('running') }
-  return { buffer, phase, elapsed, height, taps, start, pause: () => setPhase('paused'), resume: () => setPhase('running') }
+  function start() { buffer.current.clear(); elapsedRef.current = 0; setElapsed(0); setTaps(0); setCountdown(COUNTDOWN_S); setPhase('countdown') }
+  return { buffer, phase, elapsed, countdown, height, taps, start, pause: () => setPhase('paused'), resume: () => setPhase('running') }
 }

@@ -1,4 +1,11 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+// Each tick re-renders before the next timer is scheduled, so the countdown advances one second at a time.
+async function getReady(page: Page) {
+  for (const n of [3, 2, 1]) {
+    await expect(page.getByRole('button', { name: `Get ready ${n}`, exact: true })).toBeVisible()
+    await page.clock.runFor(1000)
+  }
+}
 test('five-step check gates progression, supports pause and survives refresh', async ({ page }) => {
   await page.clock.install()
   await page.goto('/check/connect')
@@ -12,6 +19,7 @@ test('five-step check gates progression, supports pause and survives refresh', a
   await expect(page).toHaveURL(/\/check\/rest$/)
   await expect(next).toBeDisabled()
   await page.getByRole('button', { name: 'Start the Test', exact: true }).click()
+  await getReady(page)
   await page.clock.runFor(10000)
   await page.getByRole('button', { name: 'Pause test', exact: true }).click()
   const frozen = await page.getByRole('progressbar').getAttribute('value')
@@ -34,21 +42,25 @@ test('five-step check gates progression, supports pause and survives refresh', a
   await expect(page).toHaveURL(/\/check\/posture$/)
   await expect(page.locator('.height-guide')).toBeVisible()
   await page.getByRole('button', { name: 'Start the Test', exact: true }).click()
+  await getReady(page)
   await page.clock.runFor(30500)
   await next.click()
   await expect(page).toHaveURL(/\/check\/reach$/)
   for (let i = 1; i <= 3; i++) {
     await expect(next).toBeDisabled()
     await page.getByRole('button', { name: `Start attempt ${i}`, exact: true }).click()
+    await getReady(page)
     await page.clock.runFor(6500)
     if (i < 3) await expect(next).toBeDisabled()
   }
   await next.click()
   await expect(page).toHaveURL(/\/check\/tap$/)
   await page.getByRole('button', { name: 'Start left hand', exact: true }).click()
+  await getReady(page)
   await page.clock.runFor(10500)
   await expect(next).toBeDisabled()
   await page.getByRole('button', { name: 'Start right hand', exact: true }).click()
+  await getReady(page)
   await page.clock.runFor(10500)
   await expect(next).toBeEnabled()
   await next.click()

@@ -32,6 +32,7 @@ export const copy = {
   spectrum: { label: 'Live frequency spectrum of the movement signal', title: 'Rhythm (Hz)', peak: 'Peak', noPeak: 'No clear rhythm yet', waiting: 'The rhythm view appears while recording' },
   tap: {
     loading: 'Opening camera…', getReady: 'Get ready', preview: 'Live hand camera preview', taps: 'taps detected',
+    cameraIdle: 'The camera turns on when you press Start.',
     local: 'Camera processing stays on this device. Only hand landmarks go to the local service.',
     moveIntoLight: 'Move your hand into the light and keep your wrist and fingertips in view.',
     cameraDenied: 'Camera unavailable. Allow camera access and close other camera apps, then try again or skip.',
@@ -100,7 +101,7 @@ export const copy = {
     devices: ['Movement sensor', 'Distance sensor', 'Laptop camera'], devicesReady: 'Devices are ready', devicesWaiting: 'Ready to connect',
     simulated: 'Simulated', backendReady: 'Connected', notConnected: 'Not connected',
     start: 'Start the Test', startAttempt: 'Start attempt', startLeft: 'Start left hand', startRight: 'Start right hand',
-    pause: 'Pause test', resume: 'Resume test', paused: 'Paused', recording: 'Recording', ready: 'Ready', runComplete: 'Attempt completed', complete: 'Completed',
+    getReady: 'Get ready', pause: 'Pause test', resume: 'Resume test', paused: 'Paused', recording: 'Recording', ready: 'Ready', runComplete: 'Attempt completed', complete: 'Completed',
     attempts: 'attempts completed', hands: 'hands completed', leftHand: 'Left hand', rightHand: 'Right hand',
     otherHand: 'Left hand complete. Take a moment, then start your right hand.', nextReach: 'Attempt complete. Return your fingertip to the starting height for the next attempt.',
     demoNotice: 'Simulated signals · No sensor or camera recording', sensorNotice: 'Choose Demo mode to complete this check with simulated signals.',
@@ -126,7 +127,7 @@ export const copy = {
       },
       reach: {
         label: 'Reach', title: 'Reach — 3 Attempts', visualization: 'Fingertip distance', graphLabel: 'Reach test fingertip distance curve',
-        instructions: ['Set the movement sensor down. Position one fingertip approximately 25–30 cm above the distance sensor, keeping it directly over the sensor.', 'Slowly lower your fingertip in one continuous movement, stopping just above the sensor without touching it. Lift your hand back to the starting position between attempts. Complete three attempts.'],
+        instructions: ['Reach uses only the distance sensor on the table, so put the movement sensor down. Hold one fingertip about 25–30 cm directly above the distance sensor.', 'Slowly lower your fingertip in one continuous movement, stopping just above the sensor without touching it. Lift your hand back to the starting position between attempts. Complete three attempts.'],
       },
       tap: {
         label: 'Tap', title: 'Tap — 10 Seconds per Hand', visualization: 'Finger opening', graphLabel: 'Tap test normalized finger opening waveform',

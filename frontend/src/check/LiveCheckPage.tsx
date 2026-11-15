@@ -22,18 +22,19 @@ function LiveTest({ step, session, stream, onDone, onSkip }: Props) {
   const hand = session.hand ?? 'right'
   const live = useLiveTest({ step, checkId: session.checkId ?? 0, hand, stream, onDone })
   const running = live.phase === 'running'
-  const busy = running || live.phase === 'starting' || live.phase === 'analyzing'
+  const counting = live.phase === 'countdown'
+  const busy = running || counting || live.phase === 'starting' || live.phase === 'analyzing'
   const skipped = session.records[step]?.skipped === true
   const error = live.error ? t.errors[live.error] : ''
-  const startLabel = live.phase === 'starting' ? t.starting : live.phase === 'analyzing' ? t.analyzing
+  const startLabel = counting ? `${copy.flow.getReady} ${live.countdown}` : live.phase === 'starting' ? t.starting : live.phase === 'analyzing' ? t.analyzing
     : running ? (step === 'reach' ? `${t.recordingAttempt} ${live.attempt}` : copy.flow.recording)
     : live.phase === 'between' ? `${copy.flow.startAttempt} ${live.attempt + 1}`
     : live.phase === 'failed' ? t.retry : step === 'reach' ? `${copy.flow.startAttempt} 1` : copy.flow.start
   const sidebar = <>
-    <div className="test-hand"><Icon name="sensor" size={18}/>{t.testingHand}: {hand === 'left' ? copy.flow.leftHand : copy.flow.rightHand}</div>
+    <div className="test-hand"><Icon name={step === 'reach' ? 'reach' : 'sensor'} size={18}/>{t.testingHand}: {hand === 'left' ? copy.flow.leftHand : copy.flow.rightHand}</div>
     <div className="test-progress">
-      <span>{complete ? (skipped ? t.skipped : copy.flow.complete) : running ? copy.flow.recording : live.phase === 'analyzing' ? t.analyzing : copy.flow.ready}</span>
-      <strong>{complete ? <Icon name="check" size={20}/> : `${Math.max(0, Math.ceil(liveTarget(step) - live.elapsed))} ${copy.flow.seconds}`}</strong>
+      <span>{complete ? (skipped ? t.skipped : copy.flow.complete) : running ? copy.flow.recording : counting ? copy.flow.getReady : live.phase === 'analyzing' ? t.analyzing : copy.flow.ready}</span>
+      <strong>{complete ? <Icon name="check" size={20}/> : counting ? `${live.countdown} ${copy.flow.seconds}` : `${Math.max(0, Math.ceil(liveTarget(step) - live.elapsed))} ${copy.flow.seconds}`}</strong>
       <progress aria-label={copy.flow.progress} max={liveTarget(step)} value={complete ? liveTarget(step) : live.elapsed}/>
       {step === 'reach' && <small>{complete ? requiredRuns(step) : Math.max(0, live.attempt - (running ? 1 : 0))} / {requiredRuns(step)} {copy.flow.attempts}</small>}
     </div>
@@ -54,6 +55,6 @@ function LiveTest({ step, session, stream, onDone, onSkip }: Props) {
         </div>
         {step !== 'reach' && <div className="test-graph"><div className="chart-label">{copy.spectrum.title}</div><Spectrum spectrum={stream.spectrum}/></div>}
       </>
-  const status = error || (!stream.live && !complete ? t.errors.disconnected : complete ? copy.flow.readyToContinue : t.notice)
+  const status = error || (!stream.live && !complete ? t.errors.disconnected : complete ? copy.flow.readyToContinue : counting ? `${copy.flow.getReady} ${live.countdown}` : t.notice)
   return <CheckShell step={step} session={session} sidebar={sidebar} output={output} status={status}/>
 }

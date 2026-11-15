@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { ApiError, led, markTest, startTest, stopTest, triggerDescent } from '../api/client'
 import type { FailReason, Hand, PositionMsg } from '../api/types'
 import type { SensorStream } from '../api/useSensorStream'
-import { requiredRuns, runSeconds, type TestStep } from './checkSession'
-export type LivePhase = 'ready' | 'starting' | 'running' | 'between' | 'analyzing' | 'failed'
+import { COUNTDOWN_S, requiredRuns, runSeconds, type TestStep } from './checkSession'
+export type LivePhase = 'ready' | 'countdown' | 'starting' | 'running' | 'between' | 'analyzing' | 'failed'
 export type LiveError = FailReason | 'test_active' | 'offline' | 'disconnected'
 const TICK_MS = 100
 const POSTURE_MAX_S = 75
@@ -25,6 +25,7 @@ export function useLiveTest({ step, checkId, hand, stream, onDone }: { step: Tes
   const [phase, setPhase] = useState<LivePhase>('ready')
   const [elapsed, setElapsed] = useState(0)
   const [attempt, setAttempt] = useState(0)
+  const [countdown, setCountdown] = useState(0)
   const [position, setPosition] = useState<PositionMsg | null>(null)
   const [error, setError] = useState<LiveError | null>(null)
   const testId = useRef<number | null>(null)
@@ -32,6 +33,7 @@ export function useLiveTest({ step, checkId, hand, stream, onDone }: { step: Tes
   const phaseRef = useRef(phase)
   const attemptRef = useRef(0)
   const lastCount = useRef(-1)
+  const nextAttempt = useRef(false)
   const live = useRef(stream.live)
   const done = useRef(onDone)
   useEffect(() => { phaseRef.current = phase }, [phase])
@@ -39,7 +41,7 @@ export function useLiveTest({ step, checkId, hand, stream, onDone }: { step: Tes
   useEffect(() => { done.current = onDone }, [onDone])
   useEffect(() => { led('hold') }, [])
   // Leaving mid-recording stops the backend test so the next start isn't blocked.
-  useEffect(() => () => { if (testId.current !== null && ['running', 'between'].includes(phaseRef.current)) void stopTest(testId.current).catch(() => undefined) }, [])
+  useEffect(() => () => { if (testId.current !== null && ['countdown', 'running', 'between'].includes(phaseRef.current)) void stopTest(testId.current).catch(() => undefined) }, [])
 
   function fail(reason: LiveError) { setError(reason); setPhase('failed'); led('recording', 0) }
   function apiFailure(e: unknown) { fail(e instanceof ApiError && e.error === 'test_active' ? 'test_active' : 'offline') }
@@ -66,10 +68,16 @@ export function useLiveTest({ step, checkId, hand, stream, onDone }: { step: Tes
     if (step === 'reach' && stream.source === 'sim') void triggerDescent().catch(() => undefined)
   }
 
-  async function start() {
-    if (phase === 'starting' || phase === 'running' || phase === 'analyzing') return
+  function start() {
+    if (['countdown', 'starting', 'running', 'analyzing'].includes(phase)) return
     setError(null)
-    if (phase === 'between' && testId.current !== null) {
+    nextAttempt.current = phase === 'between' && testId.current !== null
+    setCountdown(COUNTDOWN_S)
+    setPhase('countdown')
+  }
+
+  async function begin() {
+    if (nextAttempt.current && testId.current !== null) {
       try { await markTest(testId.current) } catch (e) { apiFailure(e); return }
       attemptRef.current += 1; setAttempt(attemptRef.current)
       beginRun()
@@ -82,6 +90,16 @@ export function useLiveTest({ step, checkId, hand, stream, onDone }: { step: Tes
       beginRun()
     } catch (e) { apiFailure(e) }
   }
+
+  const beginRef = useRef(begin)
+  useEffect(() => { beginRef.current = begin })
+  // Recording starts only after the countdown, so the get-ready seconds never reach the backend.
+  useEffect(() => {
+    if (phase !== 'countdown') return
+    led('countdown', countdown)
+    const timer = window.setTimeout(() => { if (countdown > 1) setCountdown(countdown - 1); else void beginRef.current() }, 1000)
+    return () => clearTimeout(timer)
+  }, [phase, countdown])
 
   useEffect(() => {
     if (phase !== 'running') return
@@ -101,5 +119,5 @@ export function useLiveTest({ step, checkId, hand, stream, onDone }: { step: Tes
   }, [phase, step, stream.position])
 
   function retry() { setError(null); setPhase('ready'); setAttempt(0); attemptRef.current = 0; setElapsed(0) }
-  return { phase, elapsed, attempt, position, error, start, retry }
+  return { phase, elapsed, attempt, countdown, position, error, start, retry }
 }

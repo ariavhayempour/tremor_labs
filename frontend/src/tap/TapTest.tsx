@@ -126,6 +126,6 @@ export function TapTest({ session, onDone, onSkip }: { session: CheckSession; on
     {!complete && <button className="test-skip" disabled={busy} onClick={onSkip}>{copy.sensorCheck.skip}</button>}
     {runs === 1 && !busy && <p>{copy.flow.otherHand}</p>}
   </>
-  const output = <div className="tap-output"><div className="tap-camera"><video ref={video} muted playsInline aria-label={c.preview}/><canvas ref={overlay} width={640} height={480} aria-hidden="true"/></div><p>{count} {c.taps}</p>{missing && <p role="alert">{c.moveIntoLight}</p>}{error && <p role="alert">{error}</p>}</div>
+  const output = <div className="tap-output"><div className="tap-camera"><video ref={video} muted playsInline aria-label={c.preview}/><canvas ref={overlay} width={640} height={480} aria-hidden="true"/>{!busy && !complete && <span className="tap-camera-idle">{c.cameraIdle}</span>}</div><p>{count} {c.taps}</p>{missing && <p role="alert">{c.moveIntoLight}</p>}{error && <p role="alert">{error}</p>}</div>
   return <CheckShell step="tap" session={session} sidebar={sidebar} output={output} status={status}/>
 }

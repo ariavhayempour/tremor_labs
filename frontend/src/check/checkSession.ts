@@ -1,5 +1,7 @@
 import { USE_FIXTURES } from '../api/client'
 import type { Hand } from '../api/types'
+/** Get-ready seconds shown after Start, before recording begins. */
+export const COUNTDOWN_S = 3
 export const steps = ['connect', 'rest', 'posture', 'reach', 'tap'] as const
 export type CheckStep = typeof steps[number]
 export type TestStep = Exclude<CheckStep, 'connect'>
