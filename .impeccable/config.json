@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/dashboard/a-timetable.html"
+        ],
+        "createdAt": "2026-11-15T04:45:27.701Z",
+        "reason": "agent triage: .seg segmented control wraps 40px-tall buttons whose labels sit ~11px from the edge; the 2px track padding is intentional, not cramped text"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          ".impeccable/mocks/dashboard/simple-trends.html"
+        ],
+        "createdAt": "2026-11-15T16:50:30.136Z",
+        "reason": "agent triage: the mock deliberately inherits the shipped app's font stack (frontend/src/index.css uses Inter, -apple-system); the user chose to keep the existing look"
+      }
+    ]
+  }
+}
