@@ -1,9 +1,8 @@
 # Tremor Lab
 
 An at-home 2-minute movement check (rest, posture, reach, tap) for people already diagnosed
-with a tremor condition. Results are logged next to medication times and lifestyle factors so
-patients, caregivers and neurologists can see when tremor changes. It is a tracking tool, not a
-medical device.
+with a tremor condition. Results are logged next to medication times so patients, caregivers
+and neurologists can see when tremor changes. It is a tracking tool, not a medical device.
 
 Everything runs locally on the Mac: a FastAPI backend (`localhost:8000`) and a Vite + React
 frontend (`localhost:5173`). An Arduino UNO Q supplies the sensor data over USB-C.
