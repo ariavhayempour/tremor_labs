@@ -39,6 +39,9 @@
 .home-primary { width: 100%; display: inline-flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 46px; padding: 12px 18px; border: 1px solid #789ffd; border-radius: 10px; background: linear-gradient(165deg,#2f6bff,#68b7ff); color: #fff; font-weight: 650; font-size: 14px; box-shadow: 0 7px 12px #2f6bff20; }
 .home-primary:hover { background: #346cf5; }
 .trends-card { display: grid; grid-template-rows: auto auto minmax(0,1fr) auto; min-height: 0; }
+.home-empty-card { grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 240px; text-align: center; }
+.home-empty-card h2 { font-size: 18px; font-weight: 650; }
+.home-empty-card p { max-width: 340px; font-size: 13px; line-height: 1.5; color: var(--home-muted); }
 .sample-badge { margin-left: auto; color: #91a0b5; font-size: 10px; }
 .home-history-numbers { display: flex; align-items: center; gap: 22px; margin: 14px 0 4px; }
 .home-history-numbers > strong { font-size: 28px; font-weight: 650; }
