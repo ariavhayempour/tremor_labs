@@ -10,7 +10,7 @@
 - Frontend package manager: pnpm
 - Board: Arduino UNO Q via Arduino App Lab. The sketch (MCU) uses `Arduino_RouterBridge`,
   `Arduino_Modulino` and `Arduino_LED_Matrix`; the Python relay uses `arduino.app_utils`
-- Board ↔ Mac link: USB-C only. `adb forward tcp:7700 tcp:7700` to the relay's TCP server (no Wi-Fi)
+- Board ↔ Mac link: USB-C only. `adb forward` of tcp:7700 (sample stream) and tcp:7701 (analysis server) (no Wi-Fi)
 - Tests: pytest (analysis, sources, API, seeder), vitest (copy rule), Playwright (smoke)
 - Quality: ruff + mypy (backend), `tsc --noEmit` + lint (frontend)
 - Key dirs: `backend/tremorlab/{analysis,sources,stream,api,db}/`, `frontend/src/{api,viz,screens}/`,
@@ -22,7 +22,8 @@
   diagnosed with a tremor condition. Results are logged next to medication times and
   lifestyle factors so patients, caregivers and neurologists can see when tremor changes
 - A **tracking tool, not a medical device**. It never labels a condition or gives medical advice
-- 24-hour hackathon build (Qualcomm / Arduino UNO Q track); everything runs locally on the MacBook
+- 24-hour hackathon build (Qualcomm / Arduino UNO Q track); the track requires processing on the UNO Q,
+  so sensor signal analysis runs on the board. Everything else runs locally on the MacBook
 - Requirements: `PRD.md`. Design spec: `docs/superpowers/specs/2026-11-14-tremor-lab-design.md`
   (where they disagree, the spec wins; the spec is local to the backend developer and untracked)
 - Frontend work follows `docs/frontend-plan.md` and the API contract `docs/contracts.md`. Both are tracked,
@@ -30,9 +31,12 @@
 
 ## Architecture Rules
 
-- The backend, analysis and SQLite run on the **Mac**. The board runs only the sketch
-  and a thin relay in `board/tremorlab/python/main.py` (stdlib + `arduino.app_utils`,
-  forwarding only, no logic)
+- The backend, SQLite, baselines, insights and the tap test run on the **Mac**. The board runs
+  the sketch, a thin relay in `board/tremorlab/python/main.py` (stdlib + `arduino.app_utils`,
+  forwarding only), and `analysis_server.py`, which runs `tremorlab.analysis` for rest, posture,
+  reach and the live spectrum. With `SENSOR_SOURCE=board` the Mac sends recordings there
+  (`sources/board_analysis.py`) and falls back to local analysis if the board doesn't answer.
+  `make board-deploy` copies `analysis/` and vendored numpy/scipy to the board; never edit the copy
 - `backend/tremorlab/analysis/` holds pure functions only: no I/O, no DB, no clock,
   typed, units in every docstring. Every analysis function gets pytest tests with
   synthetic signals **before** it is used by the API or UI
@@ -40,7 +44,7 @@
   `SimulatedSource`, `BoardSource`, `ReplaySource`, selected by `SENSOR_SOURCE=sim|board|replay`.
   Sources emit SI units (m/s², deg/s, mm, epoch seconds); nothing downstream knows
   which source is active
-- Hardware-dependent code lives only in `board/` and `sources/board.py`. Build every
+- Hardware-dependent code lives only in `board/`, `sources/board.py` and `sources/board_analysis.py`. Build every
   feature against `SimulatedSource` first; hardware must never block software work
 - `api/` routes call `stream/`, `analysis/` and `db/`. Only `db/` runs SQL. Schema lives
   in `db/schema.sql`
@@ -71,7 +75,8 @@ These commands are created in M0 and the targets are defined in the root `Makefi
 # Build/Run
 make dev                          # backend (localhost:8000) + frontend (localhost:5173), SENSOR_SOURCE=sim
 make dev SENSOR_SOURCE=board      # runs `make board-link` (adb forward) first
-make board-link                   # adb forward tcp:7700 tcp:7700
+make board-link                   # adb forward tcp:7700 (stream) + tcp:7701 (analysis)
+make board-deploy                 # copy analysis + vendored numpy/scipy to the UNO Q app, restart it
 make seed                         # 14 days of deterministic demo data (scripts/seed.py)
 make demo                         # rehearsal mode: replay source + seeded DB
 

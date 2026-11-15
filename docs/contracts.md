@@ -452,3 +452,32 @@ class SensorSource(Protocol):
 - `cmd` is a `LedCommand`. `value` is an int; send `0` when unused.
 
 **Clock mapping (Mac side):** `mac_t = mac_time_at_first_batch + (mcu_s − mcu_s_at_first_batch)`. Only the MCU clock spaces samples. The link counts as disconnected after 1 s with no data. Reconnect backoff is 0.5 s, doubling to a maximum of 5 s.
+
+---
+
+## Board analysis protocol (NDJSON over TCP 7701)
+
+- `board/tremorlab/python/analysis_server.py` listens on `0.0.0.0:7701`. The Mac reaches it through `adb forward tcp:7701 tcp:7701` (part of `make board-link`).
+- Used only when `SENSOR_SOURCE=board`, by `sources/board_analysis.py`. Sim and replay analyze locally.
+- One request line in, one response line out. A connection may carry several requests; several connections may be open at once. The codec is `tremorlab/analysis/wire.py`, shared by both ends.
+- Arrays are JSON lists of floats. `NaN` is allowed (Python `json` default token).
+
+**Requests:**
+
+```json
+{"op":"tremor","args":{"t":[...],"acc":[[ax,ay,az],...],"trim":true}}
+{"op":"posture","args":{"t":[...],"acc":[[...]],"t_tof":[...],"mm":[...],"band":[lo_mm,hi_mm]}}
+{"op":"reach","args":{"t":[...],"mm":[...],"marks":[epoch_s,...]}}
+```
+- Units match the analysis functions: `t` epoch s, `acc` m/s², `mm` mm.
+
+**Responses:**
+
+```json
+{"ok":true,"result":{...}}
+{"ok":false,"error":"no_descent_detected"}
+{"ok":false,"error":"bad_request","message":"..."}
+{"ok":false,"error":"internal","message":"..."}
+```
+- `result` for `tremor` / `posture` is the `TremorResult` fields (`peak_hz`, `strength_ms2`, `strength_score`, `tremor_detected`, `freqs`, `psd`, `valid_seconds`). For `reach` it is `smoothness_mm`, `wobble_ratio` and `attempts` (each with `t`, `mm`, `smoothed`, `residual`, `smoothness_mm`, `wobble_ratio`).
+- An `error` that is a `fail_reason` code is raised on the Mac as that analysis failure (stored as a failed test). Any other error, a timeout (3 s) or a refused connection makes the Mac log a warning and run the same analysis locally.
