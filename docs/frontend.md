@@ -35,7 +35,8 @@ The app has two modes. They share every screen, but the data comes from differen
 | | Fixture mode (`VITE_USE_FIXTURES=1`) | Live mode (default) |
 |---|---|---|
 | Check flow | "Demo mode" runs a simulated check locally and records nothing | "Sensor mode" (the default) records on the backend |
-| Home trends, dashboard | Sample data, labeled as such | `/api/insights/*` and `GET /api/checks?details=false` |
+| Home trends | Sample data, labeled as such | `/api/insights/*` and `GET /api/checks?details=false` |
+| Trends (`/dashboard`) | Sample data, labeled as such | Sample data, labeled as such, until it is switched to `GET /api/checks` and `GET /api/doses` (see below) |
 | Settings | Saved in the browser | `GET/PUT /api/settings` (the hand also syncs from the Settings dialog) |
 | Report | Placeholder | `GET /api/report` |
 
@@ -58,6 +59,16 @@ Code map:
 - `src/check/useLiveTest.ts` handles test timing.
 - `src/check/LiveCheckPage.tsx` holds the sensor-mode test steps. The connect step stays in `CheckPage.tsx` for both modes.
 - `src/dashboard/`, `src/results/`, `src/report/` and `src/settings/` are the data screens.
+
+### Trends screen
+
+`/dashboard` shows a Simple tab (daily averages per test against the person's own usual range) and a Detailed tab (every check, rest tremor by time since dose, tremor rhythm, every reach and tap measure, a first-week vs last-3-days table and the raw values). Clicking a day on any chart or row opens `/dashboard/day/:date`, which has the same two tabs. `?view=detailed` and `?days=7` keep the tab and period in the URL.
+
+- `src/trends/sampleTrends.ts` generates deterministic synthetic checks and doses in the `CheckOut` and `DoseOut` shapes, anchored to today.
+- `src/trends/useTrendsData.ts` is the only data source. Switching to live data means loading `GET /api/checks` and `GET /api/doses` there and setting `sample: false` (that also turns on the "Full results" links).
+- `src/trends/model.ts` holds the aggregation: daily means, the first week (the reference), the last 3 days, the usual range (interquartile range of first-week checks, shown only from 3 checks), "about the same" (within 10%), and dose bins that mirror `/api/insights/dose-response`.
+- Charts use Recharts. `ChartColumns.tsx` overlays one real button per day or check on each chart, so every chart is keyboard reachable and has full-height tap targets; the tooltip is drawn by that overlay.
+- `src/screens/History.tsx` and `src/dashboard/LiveHistory.tsx` (the earlier backend-driven dashboard) are no longer routed.
 
 ## Remaining work
 

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trends Mockups</title>
+<style>
+  :root { --bg: #f7f8fa; --ink: #15171c; --muted: #555c68; --line: #dfe2e8; --card: #fff; --accent: #1f4fa3; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0f1115; --ink: #eceef2; --muted: #a3a9b5; --line: #2a2e36; --card: #171a20; --accent: #8fb0ef; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+  main { max-width: 1080px; margin: 0 auto; padding: 56px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .lede { color: var(--muted); max-width: 68ch; margin: 0 0 40px; }
+  ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  li { background: var(--card); padding: 24px; display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: start; }
+  h2 { font-size: 18px; margin: 0; }
+  p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .role { font-size: 13px; color: var(--muted); }
+  a.open { grid-row: 1 / span 3; grid-column: 2; align-self: center; color: var(--accent); font-weight: 600; text-decoration: none; padding: 12px 16px; border: 1px solid var(--line); border-radius: 8px; white-space: nowrap; }
+  a.open:hover { border-color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
+  @media (max-width: 640px) { li { grid-template-columns: 1fr; } a.open { grid-row: auto; grid-column: 1; justify-self: start; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Trends dashboard: three directions</h1>
+  <p class="lede">Each mockup uses the same synthetic 14 days of checks and covers the same chart views: since dose, across days, by test, left vs right and frequency, plus each direction's own signature view. Every view has a chart/table toggle, and a Plain/Detail switch serves patients and neurologists from one screen.</p>
+  <ol>
+    <li>
+      <h2>A. Timetable</h2>
+      <span class="role">Rolled direction · top-bar shell</span>
+      <p>Swiss-railway clarity: a blue shell, tabular columns, and red kept only for doses. Its signature is the Day timetable, with 14 rows of doses as departures, checks as graded dots, and the running time of each dose interval.</p>
+      <a class="open" href="a-timetable.html">Open A</a>
+    </li>
+    <li>
+      <h2>B. Pill organizer</h2>
+      <span class="role">Impeccable’s pick · side-rail shell · familiar by design</span>
+      <p>The weekly organizer on every patient's table. Its signature is a 14-day × 3-dose compartment grid, each compartment tinted by the tremor measured in that interval. Click a compartment to open its detail.</p>
+      <a class="open" href="b-organizer.html">Open B</a>
+    </li>
+    <li>
+      <h2>C. Star atlas</h2>
+      <span class="role">Challenger · plate-led shell · desk (light) and field (dark) editions</span>
+      <p>A printed star atlas. Its signature is the Sky plate, where every check is a dot sized by tremor strength and plotted by hours since dose and date. The returns-after line is drawn like a meridian, and an inspector shows the selected check.</p>
+      <a class="open" href="c-atlas.html">Open C</a>
+    </li>
+  </ol>
+  <footer>Sample data. Tremor Lab is a tracking tool, not a medical device. Discuss results with your doctor.</footer>
+</main>
+</body>
+</html>

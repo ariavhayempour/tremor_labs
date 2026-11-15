@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tremor Lab Organizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --ground: #f2f5f8; --surface: #ffffff; --tray: #e8eef4; --tray-edge: #d3dce6; --tray-hi: #ffffffcc; --tray-lo: #00000026;
+  --ink: #17202b; --ink-2: #485464; --ink-3: #616c7b; --line: #e4e9ef; --line-strong: #cdd6e0;
+  --rail: #17365f; --rail-ink: #eef3fa; --rail-ink-2: #b4c4da; --rail-hover: #ffffff14; --rail-active: #ffffff; --rail-active-ink: #17365f;
+  --am: #c4870f; --mid: #13998a; --pm: #3b74d6;
+  --r0: #dd9ac5; --r1: #c972ad; --r2: #ad4f93; --r3: #8b387a; --r4: #64235a;
+  --tremor: #8b387a; --tremor-wash: #8b387a1a; --tremor-soft: #c972ad;
+  --left: #7a5bd0; --right: #5f8a1f;
+  --empty: #f7f9fb; --focus: #3b74d6; --select: #3b74d633; --shadow: 0 10px 24px -12px #17365f59, 0 2px 6px -2px #17365f26;
+  --chip: #eef2f6;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --ground: #0f141a; --surface: #151a21; --tray: #1b232c; --tray-edge: #2b3541; --tray-hi: #ffffff14; --tray-lo: #00000080;
+  --ink: #e8edf3; --ink-2: #b6c1ce; --ink-3: #95a1b0; --line: #242d38; --line-strong: #34404d;
+  --rail: #0b1626; --rail-ink: #e8eef7; --rail-ink-2: #93a6c0; --rail-hover: #ffffff12; --rail-active: #e8eef7; --rail-active-ink: #0b1626;
+  --am: #b5801c; --mid: #1f9a8c; --pm: #4f86e0;
+  --r0: #7c3e70; --r1: #9a4c86; --r2: #b9629f; --r3: #d584bd; --r4: #efb3da;
+  --tremor: #d584bd; --tremor-wash: #d584bd1f; --tremor-soft: #9a4c86;
+  --left: #8d74dc; --right: #6f9c33;
+  --empty: #12171d; --focus: #79a6f0; --select: #4f86e040; --shadow: 0 12px 26px -12px #000000b3, 0 2px 6px -2px #00000080;
+  --chip: #1d252f;
+} }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #0f141a; --surface: #151a21; --tray: #1b232c; --tray-edge: #2b3541; --tray-hi: #ffffff14; --tray-lo: #00000080;
+  --ink: #e8edf3; --ink-2: #b6c1ce; --ink-3: #95a1b0; --line: #242d38; --line-strong: #34404d;
+  --rail: #0b1626; --rail-ink: #e8eef7; --rail-ink-2: #93a6c0; --rail-hover: #ffffff12; --rail-active: #e8eef7; --rail-active-ink: #0b1626;
+  --am: #b5801c; --mid: #1f9a8c; --pm: #4f86e0;
+  --r0: #7c3e70; --r1: #9a4c86; --r2: #b9629f; --r3: #d584bd; --r4: #efb3da;
+  --tremor: #d584bd; --tremor-wash: #d584bd1f; --tremor-soft: #9a4c86;
+  --left: #8d74dc; --right: #6f9c33;
+  --empty: #12171d; --focus: #79a6f0; --select: #4f86e040; --shadow: 0 12px 26px -12px #000000b3, 0 2px 6px -2px #00000080;
+  --chip: #1d252f;
+}
+* { box-sizing: border-box; }
+html { background: var(--ground); }
+body { margin: 0; font-family: Rubik, ui-rounded, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5; color: var(--ink); background: var(--ground); -webkit-font-smoothing: antialiased; }
+::selection { background: var(--select); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; border-radius: 10px; }
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 10px; border: 2px solid var(--ground); }
+h1, h2, h3, p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+svg text { font-family: inherit; }
+
+.app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100vh; background: linear-gradient(to right, var(--rail) 236px, transparent 236px); }
+.rail { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 28px; padding: 22px 16px 18px; background: var(--rail); color: var(--rail-ink); }
+.brand { display: flex; align-items: center; gap: 11px; padding: 4px 10px; font-weight: 600; font-size: 17px; text-decoration: none; }
+.brand svg { width: 30px; height: 30px; }
+.rail nav { display: flex; flex-direction: column; gap: 4px; }
+.rail nav a { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 14px; border-radius: 14px; color: var(--rail-ink-2); text-decoration: none; font-weight: 500; transition: background .2s, color .2s; }
+.rail nav a svg { width: 20px; height: 20px; }
+.rail nav a:hover { background: var(--rail-hover); color: var(--rail-ink); }
+.rail nav a[aria-current="page"] { background: var(--rail-active); color: var(--rail-active-ink); box-shadow: inset 0 -2px 0 #00000014; }
+.rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 12px; padding: 0 6px; font-size: 13px; color: var(--rail-ink-2); }
+.status { display: flex; align-items: center; gap: 9px; }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: #5fd3a8; box-shadow: 0 0 0 3px #5fd3a833; }
+.theme-switch { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: #ffffff10; }
+.theme-switch button { flex: 1; min-height: 34px; border: 0; border-radius: 10px; background: transparent; color: var(--rail-ink-2); font-size: 12.5px; }
+.theme-switch button[aria-pressed="true"] { background: #ffffff1f; color: var(--rail-ink); }
+
+main { min-width: 0; padding: 28px 36px 24px; max-width: 1240px; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-head h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.15; }
+.page-head p { margin-top: 6px; color: var(--ink-2); }
+.badge { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 12px; border-radius: 999px; background: var(--chip); color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.badge svg { width: 14px; height: 14px; }
+.head-actions { display: flex; gap: 10px; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--line-strong); background: var(--surface); font-weight: 500; transition: background .15s, border-color .15s; }
+.btn:hover { border-color: var(--ink-3); }
+.btn svg { width: 18px; height: 18px; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center; margin: 24px 0 18px; padding: 12px 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
+.filter { display: flex; align-items: center; gap: 10px; }
+.filter > span { font-size: 13px; color: var(--ink-3); font-weight: 500; }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 13px; background: var(--chip); }
+.seg button { min-height: 40px; min-width: 44px; padding: 0 14px; border: 0; border-radius: 10px; background: transparent; color: var(--ink-2); font-weight: 500; font-size: 14px; transition: background .15s, color .15s, box-shadow .15s; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px #0000001f, 0 0 0 1px var(--line); }
+.filters .spacer { flex: 1; }
+.filter-note { font-size: 13px; color: var(--ink-3); }
+
+.summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 26px; border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); }
+.summary > div { padding: 16px 20px 16px 0; }
+.summary > div + div { padding-left: 20px; border-left: 1px solid var(--line); }
+.summary strong { display: block; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+.summary span { display: block; margin-top: 2px; color: var(--ink-2); font-size: 14px; }
+
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.section-head h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.section-head p { color: var(--ink-2); font-size: 14px; max-width: 62ch; }
+
+.organizer { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.trays { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.tray { padding: 14px 16px 16px; border-radius: 22px; background: var(--tray); border: 1px solid var(--tray-edge); box-shadow: inset 0 1px 0 var(--tray-hi), inset 0 -2px 0 #0000000d; }
+.tray-title { display: flex; justify-content: space-between; align-items: baseline; margin: 0 2px 8px 98px; font-size: 13px; color: var(--ink-3); font-weight: 500; }
+.tray-grid { display: grid; grid-template-columns: 90px repeat(7, minmax(0, 1fr)); gap: 7px 8px; }
+.dayhead { text-align: center; padding: 2px 0 4px; }
+.dayhead b { display: block; font-size: 21px; font-weight: 700; line-height: 1.1; color: color-mix(in oklab, var(--tray) 62%, var(--ink)); text-shadow: 0 1px 0 var(--tray-hi), 0 -1px 0 var(--tray-lo); letter-spacing: 0.02em; }
+.dayhead small { display: block; font-size: 12px; color: var(--ink-3); }
+.dayhead.today small { color: var(--ink); font-weight: 600; }
+.rowlabel { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 500; color: var(--ink-2); line-height: 1.2; }
+.rowlabel i { width: 12px; height: 26px; border-radius: 6px; flex-shrink: 0; box-shadow: inset 0 1px 0 #ffffff55, inset 0 -1px 0 #00000022; }
+.rowlabel small { display: block; color: var(--ink-3); font-size: 11.5px; font-weight: 400; }
+.cell { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 62px; padding: 7px 8px; border: 0; border-radius: 14px; text-align: left; background: var(--empty); color: var(--ink); box-shadow: inset 0 1px 0 #ffffff59, inset 0 -2px 0 #00000014, 0 0 0 1px #0000000d; transition: transform .35s cubic-bezier(.16,1,.3,1), box-shadow .35s cubic-bezier(.16,1,.3,1); }
+.cell.none { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--ink-3); }
+.cell .v { font-size: 15px; font-weight: 600; line-height: 1.1; }
+.cell .n { font-size: 11.5px; opacity: .92; }
+.cell:hover { transform: translateY(-1px); }
+.cell[aria-pressed="true"] { transform: translateY(-3px); box-shadow: inset 0 1px 0 #ffffff59, 0 0 0 2px var(--surface), 0 0 0 4px var(--ink), var(--shadow); z-index: 1; }
+.cell.now::after { content: "Now"; position: absolute; top: -9px; right: 6px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: var(--surface); font-size: 10.5px; font-weight: 600; line-height: 17px; }
+.legend-ramp { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.ramp { display: inline-flex; gap: 3px; }
+.ramp i { width: 30px; height: 14px; border-radius: 5px; }
+.ramp-labels { display: flex; gap: 8px; align-items: center; }
+.legend-empty { display: inline-flex; align-items: center; gap: 7px; }
+.legend-empty i { width: 18px; height: 14px; border-radius: 5px; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.foot-note { margin-top: 6px; font-size: 13px; color: var(--ink-3); }
+
+.panel { position: sticky; top: 20px; padding: 20px; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 1px 2px #0000000a; }
+.panel-body { transition: opacity .3s cubic-bezier(.16,1,.3,1), transform .3s cubic-bezier(.16,1,.3,1); }
+.panel-body.swap { opacity: 0; transform: translateY(4px); }
+.panel h3 { font-size: 18px; font-weight: 600; line-height: 1.25; }
+.panel .when { display: flex; align-items: center; gap: 8px; margin-top: 4px; color: var(--ink-2); font-size: 14px; }
+.panel .when i { width: 10px; height: 10px; border-radius: 3px; }
+.panel .lead { margin: 14px 0 16px; padding: 12px 14px; border-radius: 14px; background: var(--chip); font-size: 14.5px; }
+.checklist { list-style: none; margin: 0; padding: 0; }
+.checklist li { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.checklist .t { font-weight: 600; }
+.checklist .sub { display: block; font-size: 12.5px; color: var(--ink-3); }
+.meter { display: block; height: 8px; border-radius: 999px; background: color-mix(in oklab, var(--r0) 35%, var(--surface)); overflow: hidden; }
+.meter b { display: block; height: 100%; border-radius: 999px; background: var(--tremor); }
+.mini-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.mini-table td { white-space: nowrap; }
+.mini-table th, .mini-table td { padding: 7px 5px; vertical-align: bottom; text-align: right; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.mini-table th:first-child, .mini-table td:first-child { text-align: left; padding-left: 0; }
+.mini-table th { font-weight: 500; color: var(--ink-3); font-size: 12px; }
+.link-btn { margin-top: 16px; width: 100%; justify-content: center; }
+.panel-empty { color: var(--ink-2); font-size: 14px; }
+
+.charts { margin-top: 34px; padding: 22px 24px 20px; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); }
+.tabs-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; gap: 4px; overflow-x: auto; margin-bottom: -1px; }
+.tabs button { min-height: 48px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-2); font-weight: 500; white-space: nowrap; border-radius: 10px 10px 0 0; }
+.tabs button:hover { color: var(--ink); background: var(--chip); }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+.view-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin: 18px 0 8px; }
+.view-head h3 { font-size: 17px; font-weight: 600; }
+.view-head p { color: var(--ink-2); font-size: 14px; max-width: 66ch; margin-top: 3px; }
+.view-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 6px 0 2px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; }
+.legend i.dot { width: 10px; height: 10px; border-radius: 50%; }
+.legend i.sq { width: 10px; height: 10px; border-radius: 2px; }
+.legend i.band { width: 16px; height: 10px; border-radius: 3px; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .hit:focus { outline: none; }
+.chart .hit:focus-visible { stroke: var(--focus); stroke-width: 2; }
+.subchart-title { margin-top: 16px; font-size: 13.5px; font-weight: 500; color: var(--ink-2); }
+.multiples { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 28px; margin-top: 10px; }
+.multiple h4 { margin: 0; font-size: 14.5px; font-weight: 600; }
+.multiple p { font-size: 13px; color: var(--ink-3); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+.data-table caption { text-align: left; font-size: 13px; color: var(--ink-3); padding-bottom: 6px; }
+.data-table th, .data-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; }
+.data-table th:first-child, .data-table td:first-child { text-align: left; padding-left: 0; }
+.data-table thead th { font-weight: 500; color: var(--ink-3); font-size: 13px; border-bottom-color: var(--line-strong); }
+.table-wrap { max-height: 420px; overflow: auto; }
+.view-note { margin-top: 10px; font-size: 13px; color: var(--ink-3); }
+
+#tip { position: fixed; z-index: 50; pointer-events: none; min-width: 150px; max-width: 260px; padding: 10px 12px; border-radius: 12px; background: var(--ink); color: var(--surface); font-size: 13px; line-height: 1.45; box-shadow: 0 8px 20px -8px #00000066; opacity: 0; transform: translateY(4px); transition: opacity .15s, transform .15s; }
+#tip.on { opacity: 1; transform: none; }
+#tip b { font-weight: 600; }
+#tip .muted { opacity: .78; }
+
+footer { margin-top: 30px; padding: 18px 0 8px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 13px; }
+
+@media (max-width: 1120px) {
+  .organizer { grid-template-columns: minmax(0, 1fr); }
+  .panel { position: static; }
+}
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); background: none; }
+  .rail { position: fixed; top: auto; bottom: 0; left: 0; right: 0; height: auto; z-index: 20; flex-direction: row; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 0; }
+  .brand, .rail-foot { display: none; }
+  .rail nav { flex-direction: row; flex: 1; justify-content: space-around; }
+  .rail nav a { flex-direction: column; gap: 2px; min-height: 56px; padding: 6px 10px; font-size: 12px; justify-content: center; flex: 1; }
+  main { padding: 20px 16px 96px; }
+  .page-head h1 { font-size: 25px; }
+  .filters { padding: 12px; gap: 12px; }
+  .filter { flex-wrap: wrap; width: 100%; justify-content: space-between; }
+  .filters .spacer { display: none; }
+  .summary { grid-template-columns: minmax(0, 1fr); }
+  .summary > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+  .tray { padding: 12px 10px 12px; border-radius: 18px; }
+  .tray-title { margin-left: 2px; }
+  .tray-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+  .rowlabel { grid-column: 1 / -1; margin-top: 4px; }
+  .rowlabel i { height: 12px; width: 18px; }
+  .rowlabel br, .rowlabel small { display: inline; }
+  .corner { display: none; }
+  .cell { min-height: 52px; padding: 6px 5px; border-radius: 11px; }
+  .cell .v { font-size: 13px; }
+  .cell .n { font-size: 10.5px; }
+  .cell:not(.none) .n { display: none; }
+  .cell.none .n { font-size: 0; }
+  .cell.none .n::after { content: "–"; font-size: 14px; }
+  .cell .v { font-size: 15px; }
+  .charts { padding: 16px 14px; }
+  .multiples { grid-template-columns: minmax(0, 1fr); }
+  .head-actions .btn span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media print { .rail, .filters, footer { display: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <a class="brand" href="#" aria-label="Tremor Lab home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="6" width="28" height="20" rx="6" fill="#ffffff1f"/><rect x="5" y="9" width="6" height="14" rx="3" fill="var(--am)"/><rect x="13" y="9" width="6" height="14" rx="3" fill="var(--mid)"/><rect x="21" y="9" width="6" height="14" rx="3" fill="var(--pm)"/></svg>
+      Tremor Lab
+    </a>
+    <nav aria-label="Main">
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/></svg>Home</a>
+      <a href="#" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="3.5"/><path d="M9.2 5v14M14.8 5v14M3.5 12h17"/></svg>Trends</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M13.5 3.5V8H18M8.5 12.5h7M8.5 16h5"/></svg>Report</a>
+      <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg>Settings</a>
+    </nav>
+    <div class="rail-foot">
+      <div class="status"><i aria-hidden="true"></i>Board connected</div>
+      <div class="theme-switch" role="group" aria-label="Colour theme">
+        <button data-theme-set="auto" aria-pressed="true">Auto</button>
+        <button data-theme-set="light" aria-pressed="false">Light</button>
+        <button data-theme-set="dark" aria-pressed="false">Dark</button>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="page-head">
+      <div>
+        <h1>Trends</h1>
+        <p id="period"></p>
+      </div>
+      <div class="head-actions">
+        <span class="badge"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5M8 11h.01" stroke-linecap="round"/></svg>Sample data</span>
+        <button class="btn" type="button" aria-label="Doctor report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 9V4h10v5M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><rect x="7" y="14" width="10" height="6" rx="1"/></svg><span>Doctor report</span></button>
+      </div>
+    </div>
+
+    <div class="filters" role="group" aria-label="Filters for every chart on this page">
+      <div class="filter"><span id="lbl-window">Window</span>
+        <div class="seg" role="group" aria-labelledby="lbl-window" data-filter="window">
+          <button data-v="7" aria-pressed="false">Last 7 days</button><button data-v="14" aria-pressed="true">Last 14 days</button>
+        </div></div>
+      <div class="filter"><span id="lbl-hand">Tap hand</span>
+        <div class="seg" role="group" aria-labelledby="lbl-hand" data-filter="hand">
+          <button data-v="both" aria-pressed="true">Both</button><button data-v="left" aria-pressed="false">Left</button><button data-v="right" aria-pressed="false">Right</button>
+        </div></div>
+      <div class="spacer"></div>
+      <div class="filter"><span id="lbl-detail">Show</span>
+        <div class="seg" role="group" aria-labelledby="lbl-detail" data-filter="detail">
+          <button data-v="plain" aria-pressed="true">Plain</button><button data-v="detail" aria-pressed="false">Detail</button>
+        </div></div>
+    </div>
+
+    <section class="summary" id="summary" aria-label="Summary"></section>
+
+    <section aria-labelledby="org-h">
+      <div class="section-head">
+        <h2 id="org-h">Your organizer</h2>
+        <p id="org-sub">Each compartment is the time between two doses. Its colour shows the average rest tremor measured there.</p>
+      </div>
+      <div class="organizer">
+        <div>
+          <div class="trays" id="trays"></div>
+          <div class="legend-ramp" id="ramp-legend"></div>
+          <p class="foot-note" id="early-note"></p>
+        </div>
+        <aside class="panel" aria-live="polite" aria-labelledby="panel-h"><div class="panel-body" id="panel"></div></aside>
+      </div>
+    </section>
+
+    <section class="charts" aria-labelledby="charts-h">
+      <h2 id="charts-h" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Charts</h2>
+      <div class="tabs-row">
+        <div class="tabs" role="tablist" aria-label="Chart views" id="tabs"></div>
+        <div class="seg" role="group" aria-label="Chart or table" data-filter="form" style="margin:6px 0">
+          <button data-v="chart" aria-pressed="true">Chart</button><button data-v="table" aria-pressed="false">Table</button>
+        </div>
+      </div>
+      <div id="view" role="tabpanel"></div>
+    </section>
+
+    <footer>Tremor Lab is a tracking tool, not a medical device. Discuss results with your doctor.</footer>
+  </main>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script src="shared/tremor-data.js"></script>
+<script>
+(() => {
+const D = window.TREMOR_DATA;
+const NS = 'http://www.w3.org/2000/svg';
+const SLOTS = [
+  { key: 'Morning', short: 'AM', range: '08:00 → 13:00', dose: '08:00', varName: '--am' },
+  { key: 'Midday', short: 'Mid', range: '13:00 → 18:00', dose: '13:00', varName: '--mid' },
+  { key: 'Evening', short: 'PM', range: '18:00 → night', dose: '18:00', varName: '--pm' },
+];
+const THRESH = [0.1, 0.17, 0.24, 0.31];
+const state = { window: 14, hand: 'both', detail: false, view: 'since', since: 'avg', form: 'chart', selected: null, highlight: null };
+
+const $ = (s, r = document) => r.querySelector(s);
+const tok = () => { const cs = getComputedStyle(document.documentElement); const g = (n) => cs.getPropertyValue(n).trim(); return { ink: g('--ink'), ink2: g('--ink-2'), ink3: g('--ink-3'), line: g('--line'), lineS: g('--line-strong'), surface: g('--surface'), tremor: g('--tremor'), wash: g('--tremor-wash'), soft: g('--tremor-soft'), left: g('--left'), right: g('--right'), am: g('--am'), mid: g('--mid'), pm: g('--pm'), ramp: [0,1,2,3,4].map(i => g('--r' + i)) }; };
+const pDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+const fmtDay = (iso, o = { weekday: 'short', day: 'numeric', month: 'short' }) => pDate(iso).toLocaleDateString('en-GB', o);
+const fmtTime = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(Math.round(min % 60)).padStart(2, '0')}`;
+const fmtH = (h) => { const hh = Math.floor(h), mm = Math.round((h - hh) * 60); return hh ? `${hh} h ${mm ? mm + ' min' : ''}`.trim() : `${mm} min`; };
+const avg = (xs) => xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : null;
+const sd = (xs) => { const m = avg(xs); return Math.sqrt(avg(xs.map(x => (x - m) ** 2))); };
+const median = (xs) => { const a = [...xs].sort((p, q) => p - q), n = a.length; return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2; };
+const step = (v) => THRESH.filter(t => v >= t).length;
+const lum = (hex) => { const c = hex.replace('#', '').slice(0, 6).match(/../g).map(x => parseInt(x, 16) / 255).map(v => v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
+const textOn = (hex) => (1.05 / (lum(hex) + .05) >= (lum(hex) + .05) / (lum('#17202b') + .05) ? '#ffffff' : '#17202b');
+
+const windowDays = () => D.daily.slice(-state.window).map(d => d.date);
+const inWindow = () => { const set = new Set(windowDays()); return D.checks.filter(c => set.has(c.date)); };
+const slotIndex = (c) => SLOTS.findIndex(s => s.key === c.dose_slot);
+const tapOf = (c) => state.hand === 'both' ? (c.tap.left.taps_per_sec + c.tap.right.taps_per_sec) / 2 : c.tap[state.hand].taps_per_sec;
+const slotMean = (i) => avg(D.checks.filter(c => slotIndex(c) === i).map(c => c.rest.strength_ms2));
+
+/* ---------- tooltip ---------- */
+const tip = $('#tip');
+function showTip(html, target, evt) {
+  tip.innerHTML = html; tip.classList.add('on');
+  const r = target.getBoundingClientRect(); const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = (evt && evt.clientX) ? evt.clientX : r.left + r.width / 2; let y = r.top;
+  x = Math.min(Math.max(8, x - tw / 2), innerWidth - tw - 8);
+  y = y - th - 10 < 8 ? r.bottom + 10 : y - th - 10;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => tip.classList.remove('on');
+function bindTip(node, html, onClick) {
+  node.setAttribute('tabindex', '0');
+  node.addEventListener('pointerenter', (e) => showTip(html, node, e));
+  node.addEventListener('pointermove', (e) => showTip(html, node, e));
+  node.addEventListener('pointerleave', hideTip);
+  node.addEventListener('focus', () => showTip(html, node));
+  node.addEventListener('blur', hideTip);
+  if (onClick) { node.addEventListener('click', onClick); node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }); }
+}
+
+/* ---------- svg helpers ---------- */
+const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); if (parent) parent.appendChild(n); return n; };
+const lin = (d0, d1, r0, r1) => (v) => r0 + (v - d0) / (d1 - d0 || 1) * (r1 - r0);
+function ticks(min, max, n = 4) {
+  const span = max - min, raw = span / n, mag = 10 ** Math.floor(Math.log10(raw)), stepv = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => span / s <= n) || mag * 10;
+  const out = []; for (let v = Math.ceil(min / stepv) * stepv; v <= max + 1e-9; v += stepv) out.push(+v.toFixed(6)); return out;
+}
+function frame(host, height, m) {
+  const w = Math.max(280, host.clientWidth);
+  const svg = el('svg', { viewBox: `0 0 ${w} ${height}`, height, role: 'img' }); host.appendChild(svg);
+  return { svg, w, h: height, L: m.l, R: w - m.r, T: m.t, B: height - m.b };
+}
+function yAxis(f, y, vals, fmt, label, t) {
+  vals.forEach(v => { el('line', { x1: f.L, x2: f.R, y1: y(v), y2: y(v), stroke: t.line, 'stroke-width': 1 }, f.svg); const tx = el('text', { x: f.L - 8, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 12, fill: t.ink3, class: 'num' }, f.svg); tx.textContent = fmt(v); });
+  if (label) { const tx = el('text', { x: f.L - 8, y: f.T - 10, 'text-anchor': 'start', 'font-size': 12, fill: t.ink3 }, f.svg); tx.setAttribute('x', 0); tx.textContent = label; }
+}
+function xAxis(f, x, vals, fmt, label, t) {
+  el('line', { x1: f.L, x2: f.R, y1: f.B, y2: f.B, stroke: t.lineS, 'stroke-width': 1 }, f.svg);
+  vals.forEach(v => { const tx = el('text', { x: x(v), y: f.B + 18, 'text-anchor': 'middle', 'font-size': 12, fill: t.ink3, class: 'num' }, f.svg); tx.textContent = fmt(v); });
+  if (label) { const tx = el('text', { x: f.R, y: f.B + 36, 'text-anchor': 'end', 'font-size': 12, fill: t.ink3 }, f.svg); tx.textContent = label; }
+}
+const path = (pts) => pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+function dot(f, cx, cy, fill, t, r = 4.5, shape = 'circle') {
+  if (shape === 'square') return el('rect', { x: cx - r, y: cy - r, width: r * 2, height: r * 2, rx: 1.5, fill, stroke: t.surface, 'stroke-width': 2 }, f.svg);
+  return el('circle', { cx, cy, r, fill, stroke: t.surface, 'stroke-width': 2 }, f.svg);
+}
+function hit(f, cx, cy, r, html, label, onClick) { const n = el('circle', { cx, cy, r, class: 'hit', 'aria-label': label }, f.svg); bindTip(n, html, onClick); return n; }
+function colBar(f, x, y0, y1, w, fill) { const h = Math.max(0, y0 - y1); const r = Math.min(4, h, w / 2); const d = `M${x - w / 2} ${y0} V${y1 + r} Q${x - w / 2} ${y1} ${x - w / 2 + r} ${y1} H${x + w / 2 - r} Q${x + w / 2} ${y1} ${x + w / 2} ${y1 + r} V${y0} Z`; return el('path', { d, fill }, f.svg); }
+const strengthFmt = (v) => state.detail ? `${v.toFixed(2)} m/s²` : v < 0.1 ? 'low' : v < 0.24 ? 'moderate' : 'higher';
+
+/* ---------- header + summary ---------- */
+function renderHead() {
+  const days = windowDays(), checks = inWindow();
+  $('#period').textContent = `${fmtDay(days[0], { day: 'numeric', month: 'short' })} – ${fmtDay(days[days.length - 1], { day: 'numeric', month: 'short', year: 'numeric' })} · ${checks.length} checks · rest, posture and reach use your right hand`;
+  const { ret, med } = binsFor(checks);
+  const s = $('#summary');
+  const streak = D.summary.streak_days;
+  const restMean = avg(checks.map(c => c.rest.strength_ms2));
+  s.innerHTML = state.detail ? `
+    <div><strong class="num">${checks.length} checks</strong><span>${days.length} days, ${(checks.length / days.length).toFixed(1)} per day on average</span></div>
+    <div><strong>Mean rest ${restMean.toFixed(3)} m/s²</strong><span>n = ${checks.length}; first week ${avg(D.daily.slice(0, 7).map(d => d.mean_rest)).toFixed(3)} m/s²</span></div>
+    <div><strong>${ret !== null ? `Above median from ${ret} h` : 'Not enough data yet'}</strong><span>First 0.5 h bin at or after 1 h above the window median (${med.toFixed(3)} m/s²), n ≥ 3</span></div>`
+    : `
+    <div><strong>${checks.length} checks in ${days.length} days</strong><span>${streak} days in a row, including today</span></div>
+    <div><strong>${ret !== null ? `Rises again about ${ret} h after a dose` : 'Still learning your pattern'}</strong><span>Rest tremor is usually lowest 1 to 2 hours after a dose</span></div>
+    <div><strong>${restMean > avg(D.daily.slice(0, 7).map(d => d.mean_rest)) * 1.08 ? 'A little higher than your first week' : restMean < avg(D.daily.slice(0, 7).map(d => d.mean_rest)) * 0.92 ? 'A little lower than your first week' : 'About the same as your first week'}</strong><span>Compared with your own checks, not anyone else’s</span></div>`;
+}
+
+/* ---------- organizer ---------- */
+function cellData(date, i) {
+  const cs = D.checks.filter(c => c.date === date && slotIndex(c) === i);
+  return { date, slot: i, checks: cs, mean: avg(cs.map(c => c.rest.strength_ms2)) };
+}
+function renderOrganizer() {
+  const t = tok(), days = windowDays(), host = $('#trays'); host.innerHTML = '';
+  const today = D.daily[D.daily.length - 1].date;
+  const latest = D.latest;
+  if (!state.selected) state.selected = { date: latest.date, slot: Math.max(0, slotIndex(latest)) };
+  for (let w = 0; w < days.length; w += 7) {
+    const wk = days.slice(w, w + 7);
+    const tray = document.createElement('div'); tray.className = 'tray';
+    tray.innerHTML = `<div class="tray-title"><span>Week of ${fmtDay(wk[0], { weekday: 'long', day: 'numeric', month: 'long' })}</span><span class="num">${D.checks.filter(c => wk.includes(c.date)).length} checks</span></div>`;
+    const grid = document.createElement('div'); grid.className = 'tray-grid'; grid.setAttribute('role', 'grid'); grid.setAttribute('aria-label', `Week of ${fmtDay(wk[0], { day: 'numeric', month: 'long' })}`);
+    grid.insertAdjacentHTML('beforeend', '<div class="corner"></div>');
+    wk.forEach(d => grid.insertAdjacentHTML('beforeend', `<div class="dayhead ${d === today ? 'today' : ''}"><b aria-hidden="true">${fmtDay(d, { weekday: 'narrow' })}</b><small class="num">${d === today ? 'Today' : fmtDay(d, { day: 'numeric' })}</small></div>`));
+    SLOTS.forEach((s, i) => {
+      grid.insertAdjacentHTML('beforeend', `<div class="rowlabel"><i style="background:var(${s.varName})"></i><span>${s.key}<br><small class="num">${s.range}</small></span></div>`);
+      wk.forEach(d => {
+        const cd = cellData(d, i); const b = document.createElement('button'); b.type = 'button';
+        b.className = 'cell' + (cd.checks.length ? '' : ' none') + (d === latest.date && i === slotIndex(latest) ? ' now' : '');
+        const sel = state.selected && state.selected.date === d && state.selected.slot === i;
+        b.setAttribute('aria-pressed', sel ? 'true' : 'false');
+        b.setAttribute('aria-label', `${fmtDay(d, { weekday: 'long', day: 'numeric', month: 'long' })}, ${s.key}: ${cd.checks.length ? `${cd.checks.length} check${cd.checks.length > 1 ? 's' : ''}, rest tremor ${strengthFmt(cd.mean)}` : 'no checks'}`);
+        if (cd.checks.length) {
+          const fill = t.ramp[step(cd.mean)]; b.style.background = fill; b.style.color = textOn(fill);
+          b.innerHTML = state.detail ? `<span class="v num">${cd.mean.toFixed(2)}</span><span class="n num">n ${cd.checks.length}</span>` : `<span class="v">${cd.checks.length}</span><span class="n">${cd.checks.length > 1 ? 'checks' : 'check'}</span>`;
+        } else b.innerHTML = '<span class="n">No check</span>';
+        b.addEventListener('click', () => { state.selected = { date: d, slot: i }; renderOrganizer(); renderPanel(true); });
+        grid.appendChild(b);
+      });
+    });
+    tray.appendChild(grid); host.appendChild(tray);
+  }
+  const lbl = state.detail ? ['< 0.10', '0.10', '0.17', '0.24', '≥ 0.31 m/s²'] : null;
+  $('#ramp-legend').innerHTML = `<span>Rest tremor</span>` + (state.detail
+    ? `<span class="ramp-labels">${t.ramp.map((c, i) => `<span style="display:inline-flex;gap:6px;align-items:center"><i style="display:inline-block;width:22px;height:14px;border-radius:5px;background:${c}"></i><span class="num">${lbl[i]}</span></span>`).join('')}</span>`
+    : `<span class="ramp-labels">Lower <span class="ramp">${t.ramp.map(c => `<i style="background:${c}"></i>`).join('')}</span> Higher</span>`)
+    + `<span class="legend-empty"><i></i>No check</span>`;
+  const early = D.checks.filter(c => slotIndex(c) < 0 && days.includes(c.date)).length;
+  $('#early-note').textContent = early ? `${early} check${early > 1 ? 's were' : ' was'} taken before the morning dose, so ${early > 1 ? 'they sit' : 'it sits'} outside the compartments. ${early > 1 ? 'They appear' : 'It appears'} in “Since dose → Every check”.` : '';
+}
+function renderPanel(animate) {
+  const p = $('#panel');
+  const draw = () => {
+    const { date, slot } = state.selected; const cd = cellData(date, slot); const s = SLOTS[slot]; const usual = slotMean(slot);
+    let html = `<h3 id="panel-h">${fmtDay(date, { weekday: 'long', day: 'numeric', month: 'long' })}</h3><div class="when"><i style="background:var(${s.varName})"></i>${s.key} compartment · after the ${s.dose} dose</div>`;
+    if (!cd.checks.length) { p.innerHTML = html + `<p class="panel-empty" style="margin-top:14px">No check was taken in this compartment. Checks taken here will show how tremor looked between the ${s.dose} dose and the next one.</p>`; return; }
+    const ratio = cd.mean / usual;
+    const cmp = ratio > 1.1 ? 'higher than' : ratio < 0.9 ? 'lower than' : 'about the same as';
+    html += state.detail
+      ? `<p class="lead">Mean rest strength <b class="num">${cd.mean.toFixed(3)} m/s²</b> (n = ${cd.checks.length}), ${(ratio * 100 - 100).toFixed(0)}% vs. your ${s.key} mean of <span class="num">${usual.toFixed(3)} m/s²</span> over 14 days.</p>`
+      : `<p class="lead">Rest tremor here was <b>${cmp}</b> your usual ${s.key.toLowerCase()} level.</p>`;
+    if (state.detail) {
+      html += `<table class="mini-table"><thead><tr><th>Time</th><th>Since<br>dose</th><th>Rest<br>m/s²</th><th>Peak<br>Hz</th><th>Taps/s<br>L · R</th></tr></thead><tbody>${cd.checks.map(c => `<tr><td>${fmtTime(c.minute)}</td><td>${c.hours_since_dose.toFixed(1)} h</td><td>${c.rest.strength_ms2.toFixed(3)}</td><td>${c.rest.peak_hz ?? '—'}</td><td>${c.tap.left.taps_per_sec.toFixed(1)} · ${c.tap.right.taps_per_sec.toFixed(1)}</td></tr>`).join('')}</tbody></table>`;
+    } else {
+      html += `<ul class="checklist">${cd.checks.map(c => `<li><span class="t num">${fmtTime(c.minute)}</span><span><span class="meter" aria-hidden="true"><b style="width:${Math.max(4, c.rest.score)}%"></b></span><span class="sub">${fmtH(c.hours_since_dose)} after the dose · rest ${strengthFmt(c.rest.strength_ms2)}</span></span><span class="num" title="Rest score out of 100">${Math.round(c.rest.score)}</span></li>`).join('')}</ul>`;
+    }
+    html += `<button class="btn link-btn" type="button" id="show-on-chart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19h16M6 15l4-5 3 3 5-7"/></svg>Show on the dose chart</button>`;
+    p.innerHTML = html;
+    $('#show-on-chart').addEventListener('click', () => { state.view = 'since'; state.since = 'every'; state.form = 'chart'; state.highlight = new Set(cd.checks.map(c => c.id)); syncSeg(); renderView(); $('.charts').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); });
+  };
+  if (!animate) return draw();
+  p.classList.add('swap'); setTimeout(() => { draw(); p.classList.remove('swap'); }, 140);
+}
+
+/* ---------- views ---------- */
+const VIEWS = [
+  { id: 'since', label: 'Since dose' },
+  { id: 'days', label: 'Across days' },
+  { id: 'tests', label: 'By test' },
+  { id: 'hands', label: 'Left vs right' },
+  { id: 'freq', label: 'Frequency', detailOnly: true },
+];
+function binsFor(checks, filter = () => true) {
+  const bins = [];
+  for (let b = 0; b < 12; b++) { const xs = checks.filter(c => filter(c) && c.hours_since_dose !== null && c.hours_since_dose >= b * .5 && c.hours_since_dose < b * .5 + .5).map(c => c.rest.strength_ms2); if (xs.length) bins.push({ start_h: b * .5, mean: avg(xs), count: xs.length }); }
+  const med = median(checks.map(c => c.rest.strength_ms2)); const r = bins.find(b => b.start_h >= 1 && b.mean > med && b.count >= 3);
+  return { bins, ret: r ? r.start_h : null, med };
+}
+function renderTabs() {
+  const tabs = $('#tabs'); tabs.innerHTML = '';
+  if (!state.detail && state.view === 'freq') state.view = 'since';
+  VIEWS.filter(v => !v.detailOnly || state.detail).forEach(v => {
+    const b = document.createElement('button'); b.setAttribute('role', 'tab'); b.id = 'tab-' + v.id; b.textContent = v.label;
+    b.setAttribute('aria-selected', state.view === v.id ? 'true' : 'false'); b.tabIndex = state.view === v.id ? 0 : -1;
+    b.addEventListener('click', () => { state.view = v.id; state.highlight = null; renderTabs(); renderView(); });
+    b.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { const all = [...tabs.children]; const i = all.indexOf(b) + (e.key === 'ArrowRight' ? 1 : -1); const n = all[(i + all.length) % all.length]; n.click(); n.focus(); } });
+    tabs.appendChild(b);
+  });
+  $('#view').setAttribute('aria-labelledby', 'tab-' + state.view);
+}
+function head(title, sub, controls = '') { return `<div class="view-head"><div><h3>${title}</h3><p>${sub}</p></div><div class="view-controls">${controls}</div></div>`; }
+function table(caption, cols, rows) { return `<div class="table-wrap"><table class="data-table"><caption>${caption}</caption><thead><tr>${cols.map(c => `<th scope="col">${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(v => `<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`; }
+
+function renderView() {
+  renderTabs();
+  const v = $('#view'); v.innerHTML = ''; hideTip();
+  ({ since: viewSince, days: viewDays, tests: viewTests, hands: viewHands, freq: viewFreq })[state.view](v, tok());
+}
+
+function viewSince(v, t) {
+  const checks = inWindow();
+  const sub = `<div class="seg" role="group" aria-label="How to show it" data-sub="since">${[['avg', 'Average'], ['every', 'Every check'], ['slot', 'By dose slot']].map(([k, l]) => `<button data-v="${k}" aria-pressed="${state.since === k}">${l}</button>`).join('')}</div>`;
+  const { bins, ret } = binsFor(checks);
+  v.innerHTML = head('Tremor since the last dose', state.detail ? `Rest strength (m/s², tested hand) by hours since the last dose, 0.5 h bins. n = ${checks.filter(c => c.hours_since_dose !== null).length} checks.` : 'How rest tremor changes in the hours after each dose. Lower is less tremor.', sub);
+  v.querySelectorAll('[data-sub] button').forEach(b => b.addEventListener('click', () => { state.since = b.dataset.v; if (state.since !== 'every') state.highlight = null; renderView(); }));
+  const legend = document.createElement('div'); legend.className = 'legend'; v.appendChild(legend);
+  const host = document.createElement('div'); host.className = 'chart'; v.appendChild(host);
+  if (state.form === 'table') {
+    legend.remove(); host.remove();
+    if (state.since === 'slot') {
+      const rows = []; SLOTS.forEach((s, i) => binsFor(checks, c => slotIndex(c) === i).bins.forEach(b => rows.push([s.key, `${b.start_h.toFixed(1)}–${(b.start_h + .5).toFixed(1)} h`, b.mean.toFixed(3), b.count])));
+      v.insertAdjacentHTML('beforeend', table('Mean rest strength by dose slot and hours since dose', ['Dose slot', 'Since dose', 'Mean m/s²', 'Checks'], rows));
+    } else if (state.since === 'every') {
+      v.insertAdjacentHTML('beforeend', table('Every check in the window', ['Day', 'Time', 'Dose slot', 'Since dose', 'Rest m/s²', 'Score'], checks.map(c => [fmtDay(c.date), fmtTime(c.minute), c.dose_slot, c.hours_since_dose === null ? '—' : c.hours_since_dose.toFixed(2) + ' h', c.rest.strength_ms2.toFixed(3), c.rest.score.toFixed(0)])));
+    } else v.insertAdjacentHTML('beforeend', table('Mean rest strength by hours since dose', ['Since dose', 'Mean m/s²', 'Checks'], bins.map(b => [`${b.start_h.toFixed(1)}–${(b.start_h + .5).toFixed(1)} h`, b.mean.toFixed(3), b.count])));
+    return;
+  }
+  const f = frame(host, 300, { l: 52, r: state.since === 'slot' ? 80 : 24, t: 30, b: 42 });
+  const yMax = state.since === 'every' ? Math.max(.45, ...checks.map(c => c.rest.strength_ms2)) : .45;
+  const x = lin(0, 6, f.L, f.R), y = lin(0, yMax, f.B, f.T);
+  f.svg.setAttribute('aria-label', 'Rest tremor strength by hours since the last dose');
+  yAxis(f, y, ticks(0, yMax, 4), (vv) => vv.toFixed(2), state.detail ? 'm/s²' : 'Rest tremor', t);
+  xAxis(f, x, [0, 1, 2, 3, 4, 5, 6], (vv) => vv === 0 ? 'Dose' : vv + ' h', 'Hours since the last dose', t);
+  if (ret !== null) {
+    el('line', { x1: x(ret), x2: x(ret), y1: f.T - 6, y2: f.B, stroke: t.ink2, 'stroke-width': 1 }, f.svg);
+    const tx = el('text', { x: x(ret) - 6, y: f.T - 10, 'text-anchor': 'end', 'font-size': 12.5, fill: t.ink, 'font-weight': 500 }, f.svg); tx.textContent = `Rises again ≈ ${ret} h`;
+  }
+  const mid = (b) => b.start_h + .25;
+  if (state.since === 'avg' || state.since === 'every') {
+    if (state.since === 'every') {
+      legend.innerHTML = `<span><i class="dot" style="background:${t.soft}"></i>Each check</span><span><i style="background:${t.ink}"></i>Average</span>` + (state.highlight ? `<span><i class="dot" style="background:${t.tremor};box-shadow:0 0 0 2px ${t.surface},0 0 0 3.5px ${t.ink}"></i>Selected compartment</span>` : '');
+      checks.filter(c => c.hours_since_dose !== null && c.hours_since_dose <= 6).forEach(c => {
+        const hl = state.highlight && state.highlight.has(c.id); const cx = x(c.hours_since_dose), cy = y(c.rest.strength_ms2);
+        if (hl) el('circle', { cx, cy, r: 8, fill: 'none', stroke: t.ink, 'stroke-width': 2 }, f.svg);
+        dot(f, cx, cy, hl ? t.tremor : t.soft, t, hl ? 5 : 4);
+        hit(f, cx, cy, 12, `<b>${fmtDay(c.date)} · ${fmtTime(c.minute)}</b><br>${fmtH(c.hours_since_dose)} after the ${c.dose_slot.toLowerCase()} dose<br>Rest ${strengthFmt(c.rest.strength_ms2)}${state.detail ? ` · score ${c.rest.score.toFixed(0)}` : ''}`, `Check ${fmtDay(c.date)} ${fmtTime(c.minute)}`);
+      });
+      el('path', { d: path(bins.map(b => [x(mid(b)), y(b.mean)])), fill: 'none', stroke: t.ink, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, f.svg);
+    } else {
+      const pts = bins.map(b => [x(mid(b)), y(b.mean)]);
+      el('path', { d: path(pts) + ` L${pts[pts.length - 1][0]} ${f.B} L${pts[0][0]} ${f.B} Z`, fill: t.wash }, f.svg);
+      el('path', { d: path(pts), fill: 'none', stroke: t.tremor, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, f.svg);
+      const lo = bins.reduce((a, b) => b.mean < a.mean ? b : a), hiB = bins.reduce((a, b) => b.mean > a.mean ? b : a);
+      bins.forEach(b => {
+        dot(f, x(mid(b)), y(b.mean), t.tremor, t);
+        hit(f, x(mid(b)), y(b.mean), 14, `<b>${b.start_h.toFixed(1)}–${(b.start_h + .5).toFixed(1)} h after a dose</b><br>Average rest ${strengthFmt(b.mean)}<br><span class="muted">${b.count} checks</span>`, `${b.start_h} hours: ${b.count} checks`);
+      });
+      [lo, hiB].forEach((b, k) => { const tx = el('text', { x: x(mid(b)), y: y(b.mean) + (k ? -12 : 20), 'text-anchor': 'middle', 'font-size': 12.5, fill: t.ink2, 'font-weight': 500 }, f.svg); tx.textContent = k ? (state.detail ? b.mean.toFixed(2) : 'Highest') : (state.detail ? b.mean.toFixed(2) : 'Lowest'); });
+    }
+  } else {
+    legend.innerHTML = SLOTS.map(s => `<span><i style="background:var(${s.varName})"></i>${s.key} dose</span>`).join('');
+    SLOTS.forEach((s, i) => {
+      const b = binsFor(checks, c => slotIndex(c) === i).bins; if (!b.length) return; const col = t[['am', 'mid', 'pm'][i]];
+      const pts = b.map(bb => [x(mid(bb)), y(bb.mean)]);
+      el('path', { d: path(pts), fill: 'none', stroke: col, 'stroke-width': 2, 'stroke-linejoin': 'round' }, f.svg);
+      b.forEach(bb => { dot(f, x(mid(bb)), y(bb.mean), col, t, 4); hit(f, x(mid(bb)), y(bb.mean), 12, `<b>${s.key} dose · ${bb.start_h.toFixed(1)}–${(bb.start_h + .5).toFixed(1)} h</b><br>Average rest ${strengthFmt(bb.mean)}<br><span class="muted">${bb.count} check${bb.count > 1 ? 's' : ''}</span>`, `${s.key} ${bb.start_h} h`); });
+      const last = pts[pts.length - 1]; const tx = el('text', { x: last[0] + 10, y: last[1] + 4, 'font-size': 12.5, fill: t.ink2, 'font-weight': 500 }, f.svg); tx.textContent = s.key;
+    });
+  }
+  if (state.since !== 'every') legend.innerHTML = state.since === 'avg' ? '' : legend.innerHTML;
+  if (!legend.innerHTML) legend.remove();
+  // count strip
+  v.insertAdjacentHTML('beforeend', `<p class="subchart-title">Checks behind each point</p>`);
+  const h2 = document.createElement('div'); h2.className = 'chart'; v.appendChild(h2);
+  const g = frame(h2, 92, { l: 52, r: state.since === 'slot' ? 80 : 24, t: 10, b: 26 });
+  const cmax = Math.max(...bins.map(b => b.count), 4); const gy = lin(0, cmax, g.B, g.T); const gx = lin(0, 6, g.L, g.R);
+  g.svg.setAttribute('aria-label', 'Number of checks in each half-hour bin');
+  yAxis(g, gy, [0, Math.ceil(cmax / 2), cmax].filter((a, i, arr) => arr.indexOf(a) === i), (vv) => vv, '', t);
+  el('line', { x1: g.L, x2: g.R, y1: g.B, y2: g.B, stroke: t.lineS }, g.svg);
+  const bw = Math.min(24, (gx(.5) - gx(0)) - 4);
+  bins.forEach(b => { colBar(g, gx(b.start_h + .25), g.B, gy(b.count), bw, t.lineS); const r = el('rect', { x: gx(b.start_h + .25) - (gx(.5) - gx(0)) / 2, y: g.T, width: gx(.5) - gx(0), height: g.B - g.T, class: 'hit', 'aria-label': `${b.count} checks` }, g.svg); bindTip(r, `<b>${b.start_h.toFixed(1)}–${(b.start_h + .5).toFixed(1)} h</b><br>${b.count} checks`); });
+  if (bins.some(b => b.count < 3)) v.insertAdjacentHTML('beforeend', `<p class="view-note">Points built from fewer than 3 checks are less certain.</p>`);
+}
+
+function viewDays(v, t) {
+  const days = D.daily.slice(-state.window); const fw = D.daily.slice(0, 7).map(d => d.mean_rest); const m = avg(fw), s = sd(fw);
+  v.innerHTML = head('Rest tremor across days', state.detail ? `Daily mean rest strength (m/s²) with check count. Band: first-week mean ± 1 SD (${(m - s).toFixed(3)}–${(m + s).toFixed(3)} m/s², 7 days).` : 'One column per day. The shaded band shows where your first week usually sat.');
+  if (state.form === 'table') { v.insertAdjacentHTML('beforeend', table('Daily mean rest strength', ['Day', 'Mean m/s²', 'Checks'], days.map(d => [fmtDay(d.date), d.mean_rest.toFixed(3), d.count]))); return; }
+  v.insertAdjacentHTML('beforeend', `<div class="legend"><span><i class="sq" style="background:${t.tremor}"></i>Daily average</span><span><i class="band" style="background:${t.wash};box-shadow:inset 0 0 0 1px ${t.soft}"></i>First week range</span></div>`);
+  const host = document.createElement('div'); host.className = 'chart'; v.appendChild(host);
+  const f = frame(host, 300, { l: 52, r: 24, t: 24, b: 58 });
+  const x = (i) => f.L + (i + .5) * (f.R - f.L) / days.length, y = lin(0, .45, f.B, f.T);
+  f.svg.setAttribute('aria-label', 'Daily average rest tremor');
+  yAxis(f, y, ticks(0, .45, 4), (vv) => vv.toFixed(2), state.detail ? 'm/s²' : 'Rest tremor', t);
+  el('rect', { x: f.L, width: f.R - f.L, y: y(m + s), height: y(m - s) - y(m + s), fill: t.wash }, f.svg);
+  el('line', { x1: f.L, x2: f.R, y1: y(m), y2: y(m), stroke: t.soft, 'stroke-width': 1 }, f.svg);
+  el('line', { x1: f.L, x2: f.R, y1: f.B, y2: f.B, stroke: t.lineS }, f.svg);
+  const bw = Math.min(24, (f.R - f.L) / days.length - 6);
+  const hiI = days.reduce((a, d, i) => d.mean_rest > days[a].mean_rest ? i : a, 0);
+  days.forEach((d, i) => {
+    colBar(f, x(i), f.B, y(d.mean_rest), bw, t.tremor);
+    const a = el('text', { x: x(i), y: f.B + 18, 'text-anchor': 'middle', 'font-size': 12, fill: t.ink3, class: 'num' }, f.svg); a.textContent = fmtDay(d.date, { day: 'numeric' });
+    const n = el('text', { x: x(i), y: f.B + 34, 'text-anchor': 'middle', 'font-size': 11, fill: t.ink3, class: 'num' }, f.svg); n.textContent = (days.length <= 7 || i % 2 === 0 || i === days.length - 1) ? fmtDay(d.date, { weekday: 'short' }) : '';
+    const r = el('rect', { x: x(i) - (f.R - f.L) / days.length / 2, y: f.T, width: (f.R - f.L) / days.length, height: f.B - f.T, class: 'hit', 'aria-label': `${fmtDay(d.date)}: ${d.count} checks` }, f.svg);
+    bindTip(r, `<b>${fmtDay(d.date, { weekday: 'long', day: 'numeric', month: 'short' })}</b><br>Average rest ${strengthFmt(d.mean_rest)}<br><span class="muted">${d.count} checks</span>`);
+  });
+  const tx = el('text', { x: x(hiI), y: y(days[hiI].mean_rest) - 8, 'text-anchor': 'middle', 'font-size': 12.5, fill: t.ink2, 'font-weight': 500 }, f.svg); tx.textContent = state.detail ? days[hiI].mean_rest.toFixed(2) : 'Highest day';
+  v.insertAdjacentHTML('beforeend', `<p class="view-note">Checks per day: ${days.map(d => d.count).join(' · ')}. Days with fewer checks move more.</p>`);
+}
+
+function viewTests(v, t) {
+  const fw = D.checks.filter(c => c.date < D.daily[7].date), cur = D.checks.filter(c => c.date >= D.daily[D.daily.length - 3].date);
+  const TESTS = [
+    { k: 'rest', name: 'Rest', unit: 'score', f: c => c.rest.score, max: 60, note: 'Score 0–100. Higher means stronger tremor.' },
+    { k: 'posture', name: 'Posture', unit: 'score', f: c => c.posture.score, max: 60, note: 'Score 0–100. Higher means stronger tremor.' },
+    { k: 'reach', name: 'Reach', unit: 'mm', f: c => c.reach.smoothness_mm, max: 8, note: 'Wobble on the way down, in mm. Lower is smoother.' },
+    { k: 'tap', name: 'Tap', unit: 'taps/s', f: tapOf, max: 5, note: `Taps per second, ${state.hand === 'both' ? 'both hands averaged' : state.hand + ' hand'}. Higher is faster.` },
+  ];
+  v.innerHTML = head('Each test, first week and now', state.detail ? `First week (n = ${fw.length}) vs. last 3 days (n = ${cur.length}). Each test on its own scale and unit.` : 'Where each test started and where it is now. Each test has its own scale.');
+  const rows = TESTS.map(T => ({ ...T, a: avg(fw.map(T.f)), b: avg(cur.map(T.f)) }));
+  if (state.form === 'table') { v.insertAdjacentHTML('beforeend', table('First week and last 3 days per test', ['Test', 'Unit', `First week (n ${fw.length})`, `Last 3 days (n ${cur.length})`, 'Change'], rows.map(r => [r.name, r.unit, r.a.toFixed(2), r.b.toFixed(2), `${r.b >= r.a ? '+' : ''}${((r.b / r.a - 1) * 100).toFixed(0)}%`]))); return; }
+  v.insertAdjacentHTML('beforeend', `<div class="legend"><span><i class="dot" style="background:${t.surface};box-shadow:inset 0 0 0 2px ${t.ink3}"></i>First week</span><span><i class="dot" style="background:${t.tremor}"></i>Last 3 days</span></div>`);
+  const grid = document.createElement('div'); grid.className = 'multiples'; v.appendChild(grid);
+  rows.forEach(r => {
+    const box = document.createElement('div'); box.className = 'multiple';
+    const change = r.b / r.a - 1; const word = Math.abs(change) < .05 ? 'About the same' : change > 0 ? `${(change * 100).toFixed(0)}% higher` : `${(-change * 100).toFixed(0)}% lower`;
+    box.innerHTML = `<h4>${r.name} <span style="font-weight:400;color:var(--ink-2)">· ${word}</span></h4><p>${r.note}</p>`;
+    grid.appendChild(box);
+    const host = document.createElement('div'); host.className = 'chart'; box.appendChild(host);
+    const f = frame(host, 76, { l: 8, r: 16, t: 18, b: 24 });
+    const x = lin(0, r.max, f.L, f.R), yy = (f.T + f.B) / 2;
+    f.svg.setAttribute('aria-label', `${r.name}: first week ${r.a.toFixed(1)}, last 3 days ${r.b.toFixed(1)} ${r.unit}`);
+    ticks(0, r.max, 4).forEach(tv => { el('line', { x1: x(tv), x2: x(tv), y1: f.T - 4, y2: f.B, stroke: t.line }, f.svg); const tx = el('text', { x: x(tv), y: f.B + 17, 'text-anchor': 'middle', 'font-size': 11.5, fill: t.ink3, class: 'num' }, f.svg); tx.textContent = tv; });
+    el('line', { x1: x(r.a), x2: x(r.b), y1: yy, y2: yy, stroke: t.soft, 'stroke-width': 3, 'stroke-linecap': 'round' }, f.svg);
+    el('circle', { cx: x(r.a), cy: yy, r: 6, fill: t.surface, stroke: t.ink3, 'stroke-width': 2 }, f.svg);
+    dot(f, x(r.b), yy, t.tremor, t, 6.5);
+    const la = el('text', { x: x(r.b), y: yy - 12, 'text-anchor': 'middle', 'font-size': 12.5, fill: t.ink, 'font-weight': 600, class: 'num' }, f.svg); la.textContent = r.b.toFixed(1);
+    hit(f, x(r.a), yy, 13, `<b>${r.name} · first week</b><br>${r.a.toFixed(2)} ${r.unit}<br><span class="muted">${fw.length} checks</span>`, `${r.name} first week`);
+    hit(f, x(r.b), yy, 13, `<b>${r.name} · last 3 days</b><br>${r.b.toFixed(2)} ${r.unit}<br><span class="muted">${cur.length} checks</span>`, `${r.name} last 3 days`);
+  });
+}
+
+function seriesChart(v, t, { title, data, accessor, hands, yMin, yMax, fmt, unitLabel, height = 240, label }) {
+  const host = document.createElement('div'); host.className = 'chart'; v.appendChild(host);
+  const f = frame(host, height, { l: 52, r: 48, t: 24, b: 40 });
+  const x = lin(0, data.length - 1, f.L, f.R), y = lin(yMin, yMax, f.B, f.T);
+  f.svg.setAttribute('aria-label', label);
+  yAxis(f, y, ticks(yMin, yMax, 4), fmt, unitLabel, t);
+  const dayStarts = []; data.forEach((c, i) => { if (i === 0 || c.date !== data[i - 1].date) dayStarts.push(i); });
+  const every = Math.ceil(dayStarts.length / 7);
+  xAxis(f, x, [], () => '', 'Checks, oldest to newest', t);
+  dayStarts.forEach((i, k) => { if (k % every) return; const tx = el('text', { x: x(i), y: f.B + 18, 'text-anchor': 'start', 'font-size': 12, fill: t.ink3, class: 'num' }, f.svg); tx.textContent = fmtDay(data[i].date, { day: 'numeric', month: 'short' }); });
+  const ends = hands.map(hd => y(accessor(data[data.length - 1], hd)));
+  const labelEnds = hands.length === 1 || Math.abs(ends[0] - ends[1]) >= 15;
+  hands.forEach(hd => {
+    const col = t[hd]; const pts = data.map((c, i) => [x(i), y(accessor(c, hd))]);
+    el('path', { d: path(pts), fill: 'none', stroke: col, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, f.svg);
+    const last = pts[pts.length - 1]; dot(f, last[0], last[1], col, t, 4.5);
+    if (!labelEnds) return;
+    const tx = el('text', { x: last[0] + 9, y: last[1] + 4, 'font-size': 12.5, fill: t.ink2, 'font-weight': 500 }, f.svg); tx.textContent = hd === 'left' ? 'Left' : 'Right';
+  });
+  // crosshair layer
+  const cross = el('line', { y1: f.T, y2: f.B, stroke: t.ink3, 'stroke-width': 1, opacity: 0 }, f.svg);
+  const stepW = (f.R - f.L) / Math.max(1, data.length - 1);
+  data.forEach((c, i) => {
+    const r = el('rect', { x: x(i) - stepW / 2, y: f.T, width: Math.max(stepW, 6), height: f.B - f.T, class: 'hit', 'aria-label': `${fmtDay(c.date)} ${fmtTime(c.minute)}` }, f.svg);
+    bindTip(r, `<b>${fmtDay(c.date)} · ${fmtTime(c.minute)}</b><br>${hands.map(hd => `${hd === 'left' ? 'Left' : 'Right'}: ${fmt(accessor(c, hd))}`).join('<br>')}`);
+    r.addEventListener('pointerenter', () => { cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1); });
+    r.addEventListener('focus', () => { cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('opacity', 1); });
+    r.addEventListener('pointerleave', () => cross.setAttribute('opacity', 0)); r.addEventListener('blur', () => cross.setAttribute('opacity', 0));
+  });
+}
+function viewHands(v, t) {
+  const data = inWindow(); const hands = state.hand === 'both' ? ['left', 'right'] : [state.hand];
+  v.innerHTML = head('Tapping speed, left and right', state.detail ? `Taps per second per check (n = ${data.length} checks), with rhythm variability (coefficient of variation) and amplitude decrement below.` : 'How fast each hand tapped, one point per check. Higher is faster.');
+  if (state.form === 'table') { v.insertAdjacentHTML('beforeend', table('Tap results per check', ['Day', 'Time', 'Left taps/s', 'Right taps/s', 'Rhythm CV', 'Decrement L · R'], data.map(c => [fmtDay(c.date), fmtTime(c.minute), c.tap.left.taps_per_sec.toFixed(2), c.tap.right.taps_per_sec.toFixed(2), c.tap.left.rhythm_cv.toFixed(3), `${(c.tap.left.decrement * 100).toFixed(0)}% · ${(c.tap.right.decrement * 100).toFixed(0)}%`]))); return; }
+  if (hands.length > 1) v.insertAdjacentHTML('beforeend', `<div class="legend">${hands.map(h => `<span><i style="background:${t[h]}"></i>${h === 'left' ? 'Left hand' : 'Right hand'}</span>`).join('')}</div>`);
+  seriesChart(v, t, { data, accessor: (c, h) => c.tap[h].taps_per_sec, hands, yMin: 2.5, yMax: 5, fmt: (vv) => `${vv.toFixed(1)}${state.detail ? '' : ''}`, unitLabel: 'taps/s', label: 'Taps per second per check' });
+  if (state.detail) {
+    v.insertAdjacentHTML('beforeend', `<p class="subchart-title">Rhythm variability (lower is steadier)</p>`);
+    seriesChart(v, t, { data, accessor: (c, h) => c.tap[h].rhythm_cv, hands, yMin: 0, yMax: .25, fmt: (vv) => vv.toFixed(2), unitLabel: 'CV', height: 160, label: 'Rhythm variability per check' });
+    v.insertAdjacentHTML('beforeend', `<p class="subchart-title">Amplitude change, first 3 s to last 3 s</p>`);
+    seriesChart(v, t, { data, accessor: (c, h) => c.tap[h].decrement * 100, hands, yMin: -20, yMax: 0, fmt: (vv) => `${vv.toFixed(0)}%`, unitLabel: '%', height: 160, label: 'Tap amplitude change per check' });
+  }
+}
+
+function viewFreq(v, t) {
+  const data = inWindow();
+  v.innerHTML = head('Peak tremor frequency', `Peak of the 3–12 Hz spectrum per check, rest and posture tests, tested hand. Checks with no clear tremor have no peak and are marked along the bottom. n = ${data.length}.`);
+  if (state.form === 'table') { v.insertAdjacentHTML('beforeend', table('Peak frequency per check', ['Day', 'Time', 'Rest Hz', 'Posture Hz'], data.map(c => [fmtDay(c.date), fmtTime(c.minute), c.rest.peak_hz ?? 'no clear tremor', c.posture.peak_hz ?? 'no clear tremor']))); return; }
+  v.insertAdjacentHTML('beforeend', `<div class="legend"><span><i class="dot" style="background:${t.tremor}"></i>Rest</span><span><i class="sq" style="background:${t.soft}"></i>Posture</span><span><i class="sq" style="background:${t.lineS};width:3px;height:12px"></i>No clear tremor</span></div>`);
+  const host = document.createElement('div'); host.className = 'chart'; v.appendChild(host);
+  const f = frame(host, 300, { l: 52, r: 24, t: 24, b: 58 });
+  const x = lin(0, data.length - 1, f.L, f.R), y = lin(3, 12, f.B - 18, f.T);
+  f.svg.setAttribute('aria-label', 'Peak tremor frequency per check');
+  yAxis(f, y, [3, 6, 9, 12], (vv) => vv, 'Hz', t);
+  el('line', { x1: f.L, x2: f.R, y1: f.B, y2: f.B, stroke: t.lineS }, f.svg);
+  const ts = el('text', { x: f.L - 8, y: f.B - 4, 'text-anchor': 'end', 'font-size': 11, fill: t.ink3 }, f.svg); ts.textContent = 'none';
+  const dayStarts = []; data.forEach((c, i) => { if (i === 0 || c.date !== data[i - 1].date) dayStarts.push(i); });
+  dayStarts.forEach((i, k) => { if (k % Math.ceil(dayStarts.length / 7)) return; const tx = el('text', { x: x(i), y: f.B + 18, 'font-size': 12, fill: t.ink3, class: 'num' }, f.svg); tx.textContent = fmtDay(data[i].date, { day: 'numeric', month: 'short' }); });
+  const xl = el('text', { x: f.R, y: f.B + 38, 'text-anchor': 'end', 'font-size': 12, fill: t.ink3 }, f.svg); xl.textContent = 'Checks, oldest to newest';
+  data.forEach((c, i) => {
+    [['rest', 'circle', t.tremor, -3], ['posture', 'square', t.soft, 3]].forEach(([k, shape, col, dx]) => {
+      const hz = c[k].peak_hz;
+      if (hz === null) el('rect', { x: x(i) + dx - 1.5, y: f.B - 14, width: 3, height: 10, rx: 1.5, fill: t.lineS }, f.svg);
+      else dot(f, x(i) + dx, y(hz), col, t, 4, shape);
+    });
+    hit(f, x(i), (c.rest.peak_hz ? y(c.rest.peak_hz) : f.B - 9), 12, `<b>${fmtDay(c.date)} · ${fmtTime(c.minute)}</b><br>Rest: ${c.rest.peak_hz ? c.rest.peak_hz.toFixed(2) + ' Hz' : 'no clear tremor'}<br>Posture: ${c.posture.peak_hz ? c.posture.peak_hz.toFixed(2) + ' Hz' : 'no clear tremor'}`, `Frequency ${fmtDay(c.date)} ${fmtTime(c.minute)}`);
+  });
+  const nn = data.filter(c => c.rest.peak_hz === null).length;
+  v.insertAdjacentHTML('beforeend', `<p class="view-note">${nn} of ${data.length} rest tests showed no clear tremor peak, mostly 1–2 h after a dose.</p>`);
+}
+
+/* ---------- controls ---------- */
+function syncSeg() {
+  document.querySelectorAll('[data-filter]').forEach(g => {
+    const key = g.dataset.filter; const val = key === 'detail' ? (state.detail ? 'detail' : 'plain') : String(state[key]);
+    g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === val ? 'true' : 'false'));
+  });
+}
+document.querySelectorAll('[data-filter]').forEach(g => g.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return; const key = g.dataset.filter;
+  if (key === 'window') { state.window = +b.dataset.v; const days = windowDays(); if (!days.includes(state.selected.date)) state.selected = null; }
+  else if (key === 'hand') state.hand = b.dataset.v;
+  else if (key === 'detail') state.detail = b.dataset.v === 'detail';
+  else if (key === 'form') state.form = b.dataset.v;
+  syncSeg(); renderAll();
+}));
+document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => {
+  const v = b.dataset.themeSet; if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
+  document.querySelectorAll('[data-theme-set]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  try { localStorage.setItem('tl-theme', v); } catch (e) { /* storage unavailable */ }
+  renderAll();
+}));
+try { const saved = localStorage.getItem('tl-theme'); if (saved) document.querySelector(`[data-theme-set="${saved}"]`)?.click(); } catch (e) { /* storage unavailable */ }
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+
+function renderAll() { renderHead(); renderOrganizer(); renderPanel(false); renderView(); }
+let rz, lastW = 0; new ResizeObserver((es) => { const w = Math.round(es[0].contentRect.width); if (w === lastW) return; lastW = w; clearTimeout(rz); rz = setTimeout(renderView, 80); }).observe($('#view'));
+renderAll();
+})();
+</script>
+</body>
+</html>

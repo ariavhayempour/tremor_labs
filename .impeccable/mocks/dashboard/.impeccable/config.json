@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          ".impeccable/mocks/dashboard/c-atlas.html"
+        ],
+        "createdAt": "2026-11-15T04:45:41.468Z",
+        "reason": "agent triage: .seg segmented control track with 2px padding wrapping 40px-tall buttons; labels are inset, not cramped"
+      }
+    ]
+  }
+}

@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tremor Lab Trends</title>
+<style>
+:root {
+  color-scheme: light;
+  --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --shell: #1b2a6b; --shell-ink: #ffffff; --shell-2: #c5cdea; --shell-line: #ffffff26; --shell-hi: #2a3c86;
+  --ground: #f3f4f7; --surface: #ffffff; --ink: #0b0d12; --ink-2: #565c6b; --ink-3: #6b7180;
+  --rule: #dfe2e9; --grid: #eceef3; --row: #f7f8fa; --band: #e7eaf0; --sel: #cde2fb;
+  --dose: #d6001c;
+  --s1: #86b6ef; --s2: #5598e7; --s3: #2a78d6; --s4: #1c5cab; --s5: #0d366b;
+  --line: #2a78d6; --wash: #2a78d61a;
+  --hand-l: #6250d6; --hand-r: #199e70;
+  --good: #0a7d0a; --focus: #2a78d6;
+  --tip-bg: #0b0d12; --tip-ink: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --shell: #0d1430; --shell-ink: #f0f2f8; --shell-2: #c5cdea; --shell-line: #ffffff1f; --shell-hi: #1d2a5c;
+    --ground: #0e1117; --surface: #14181f; --ink: #eef0f5; --ink-2: #a7adbb; --ink-3: #8a90a0;
+    --rule: #272d38; --grid: #1f242d; --row: #181c24; --band: #232935; --sel: #1c5cab;
+    --dose: #ff5c5c;
+    --s1: #1c5cab; --s2: #2a78d6; --s3: #5598e7; --s4: #86b6ef; --s5: #cde2fb;
+    --line: #5598e7; --wash: #5598e71f;
+    --hand-l: #9085e9; --hand-r: #1baf7a;
+    --good: #2fc22f; --focus: #86b6ef;
+    --tip-bg: #eef0f5; --tip-ink: #0b0d12;
+  }
+}
+* { box-sizing: border-box; }
+html { background: var(--ground); scrollbar-color: var(--ink-3) var(--ground); }
+body { margin: 0; font: 15px/1.45 var(--font); color: var(--ink); background: var(--ground); -webkit-font-smoothing: antialiased; }
+::selection { background: var(--sel); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+h1, h2, h3, p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.num, table, .axis text { font-variant-numeric: tabular-nums; }
+svg text { font-family: var(--font); }
+
+/* shell */
+.shell { background: var(--shell); color: var(--shell-ink); }
+.shell-in { max-width: 1360px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 32px; min-height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; letter-spacing: -0.01em; color: inherit; text-decoration: none; }
+.brand svg { width: 26px; height: 26px; }
+.nav { display: flex; gap: 2px; margin-right: auto; }
+.nav a { display: flex; align-items: center; min-height: 60px; padding: 0 14px; color: var(--shell-2); text-decoration: none; font-size: 14px; border-bottom: 3px solid transparent; border-top: 3px solid transparent; }
+.nav a:hover { color: var(--shell-ink); background: var(--shell-hi); }
+.nav a[aria-current="page"] { color: var(--shell-ink); font-weight: 600; border-bottom-color: var(--shell-ink); }
+.link-state { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--shell-2); }
+.link-state i { width: 8px; height: 8px; border-radius: 50%; background: #3ad13a; box-shadow: 0 0 0 2px var(--shell); }
+.link-state b { color: var(--shell-ink); font-weight: 500; }
+
+/* filter row */
+.filters { background: var(--surface); border-bottom: 1px solid var(--rule); position: sticky; top: 0; z-index: 5; }
+.filters-in { max-width: 1360px; margin: 0 auto; padding: 10px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.fgroup { display: flex; align-items: center; gap: 10px; }
+.flabel { font-size: 12px; color: var(--ink-2); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; padding: 2px; background: var(--row); }
+.seg button { min-height: 40px; min-width: 44px; padding: 0 14px; border: 0; background: transparent; border-radius: 4px; font-size: 14px; color: var(--ink-2); }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px #0b0d1226, 0 0 0 1px var(--rule); }
+.readout { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--ink-2); }
+.readout strong { color: var(--ink); font-weight: 600; }
+.sample { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border: 1px solid var(--rule); border-radius: 4px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+.sample svg { width: 12px; height: 12px; }
+.hand-note { flex-basis: 100%; font-size: 12px; color: var(--ink-2); margin-top: -4px; }
+.hand-note[hidden] { display: none; }
+
+main { max-width: 1360px; margin: 0 auto; padding: 28px 24px 24px; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.head h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+.head p { color: var(--ink-2); font-size: 14px; }
+
+/* summary board row */
+.board-row { display: grid; grid-template-columns: 1fr 1fr 1.6fr 1.6fr 1.8fr; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; margin-bottom: 24px; }
+.board-row > div { padding: 14px 18px 16px; border-left: 1px solid var(--rule); min-width: 0; }
+.board-row > div:first-child { border-left: 0; }
+.board-row dt { font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+.board-row dd { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.15; }
+.board-row dd small { font-size: 14px; font-weight: 400; color: var(--ink-2); letter-spacing: 0; }
+.dose-times { display: flex; gap: 14px; flex-wrap: wrap; }
+.dose-times span { display: inline-flex; align-items: center; gap: 7px; }
+.dose-times span::before { content: ""; width: 3px; height: 22px; background: var(--dose); border-radius: 1px; }
+
+/* panel */
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
+.panel-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--rule); flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin-bottom: -1px; }
+.tabs button { min-height: 52px; padding: 0 14px; border: 0; background: none; border-bottom: 3px solid transparent; font-size: 14px; color: var(--ink-2); white-space: nowrap; }
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--shell); }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) .tabs button[aria-selected="true"] { border-bottom-color: var(--s4); } }
+.panel-bar .seg { margin: 8px 0; }
+.seg svg { width: 16px; height: 16px; vertical-align: -3px; margin-right: 6px; }
+.panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px 24px; padding: 20px 22px 6px; flex-wrap: wrap; }
+.panel-head h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 4px; }
+.panel-head p { color: var(--ink-2); font-size: 14px; max-width: 72ch; }
+.panel-body { padding: 8px 22px 22px; min-height: 360px; position: relative; }
+.chart { width: 100%; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart.drawn path.series { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw .7s cubic-bezier(.16,1,.3,1) forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .chart.drawn path.series { animation: none; stroke-dashoffset: 0; } }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin: 4px 0 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.key-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.key-line { width: 16px; height: 2px; display: inline-block; border-radius: 1px; }
+.key-dose { width: 3px; height: 14px; background: var(--dose); display: inline-block; border-radius: 1px; }
+.key-ring { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ink-2); display: inline-block; }
+.key-band { width: 16px; height: 10px; background: var(--band); display: inline-block; border-radius: 2px; }
+.ramp { display: inline-flex; gap: 2px; }
+.ramp i { width: 14px; height: 10px; display: inline-block; }
+.ramp i:first-child { border-radius: 2px 0 0 2px; } .ramp i:last-child { border-radius: 0 2px 2px 0; }
+.sub-title { font-size: 13px; color: var(--ink-2); margin: 16px 0 4px; }
+.multiples { display: grid; gap: 18px 22px; }
+.multiples h3 { font-size: 14px; font-weight: 600; }
+.multiples h3 small { font-weight: 400; color: var(--ink-2); font-size: 12px; margin-left: 6px; }
+.m3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.m7 { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 14px 12px; }
+.m7 h3 { font-size: 12px; }
+.readline { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: baseline; padding: 10px 14px; margin: 4px 0 12px; background: var(--row); border-radius: 6px; font-size: 14px; min-height: 44px; }
+.readline b { font-weight: 600; }
+.readline .muted { color: var(--ink-2); }
+
+/* plates */
+.plates { border-top: 1px solid var(--rule); }
+.plate { display: grid; grid-template-columns: 180px 1fr 1fr 1.6fr 150px; align-items: center; gap: 18px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.plate h3 { font-size: 16px; font-weight: 600; }
+.plate .what { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.plate .k { font-size: 12px; color: var(--ink-2); }
+.plate .v { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.plate .v small { font-size: 13px; color: var(--ink-2); font-weight: 400; margin-left: 3px; }
+.plate .n { font-size: 12px; color: var(--ink-3); }
+.plate .chg { font-size: 14px; }
+.plate .chg .k { display: block; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.cap { font-size: 13px; color: var(--ink-2); padding: 4px 0 10px; }
+th { text-align: left; font-weight: 500; font-size: 12px; color: var(--ink-2); padding: 8px 12px; border-bottom: 1px solid var(--ink); white-space: nowrap; }
+td { padding: 9px 12px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td.r, th.r { text-align: right; }
+tbody tr:nth-child(even) td { background: var(--row); }
+
+/* departures */
+.departures { margin-top: 24px; }
+.departures .bar { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 16px 22px 8px; }
+.departures h2 { white-space: nowrap; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.departures .dep-wrap { padding: 0 22px 14px; }
+.dose-cell { display: inline-flex; align-items: center; gap: 8px; }
+.dose-cell::before { content: ""; width: 3px; height: 14px; background: var(--dose); border-radius: 1px; }
+
+.tip { position: fixed; z-index: 50; pointer-events: none; background: var(--tip-bg); color: var(--tip-ink); font-size: 13px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; max-width: 260px; box-shadow: 0 6px 18px #0b0d1240; opacity: 0; transform: translateY(4px); transition: opacity .12s, transform .12s; }
+.tip.on { opacity: 1; transform: none; }
+.tip b { font-weight: 600; }
+.hit { fill: transparent; cursor: pointer; }
+.hit:focus { outline: none; }
+.hit:focus-visible { stroke: var(--focus); stroke-width: 2; }
+
+footer { max-width: 1360px; margin: 0 auto; padding: 18px 24px 36px; color: var(--ink-2); font-size: 13px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+body.plain .d-only { display: none !important; }
+body.detail .p-only { display: none !important; }
+
+@media (max-width: 1100px) {
+  .board-row { grid-template-columns: repeat(3, 1fr); }
+  .board-row > div:nth-child(4) { border-left: 0; }
+  .board-row > div:nth-child(n+4) { border-top: 1px solid var(--rule); }
+  .plate { grid-template-columns: 150px 1fr 1fr; }
+  .plate .dumb { grid-column: 1 / -1; } .plate .chg { grid-column: 1 / -1; }
+  .m7 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .shell-in { gap: 12px; padding: 0 16px; flex-wrap: wrap; min-height: 0; padding-top: 10px; }
+  .nav { order: 3; flex-basis: 100%; overflow-x: auto; margin: 0 -16px; padding: 0 6px; }
+  .nav a { min-height: 46px; }
+  .link-state span { display: none; }
+  .link-state { margin-left: auto; }
+  .filters { position: static; }
+  .filters-in { padding: 10px 16px; gap: 10px 14px; }
+  .fgroup { flex-wrap: wrap; gap: 6px; }
+  .flabel { flex-basis: 100%; }
+  .readout { margin-left: 0; flex-wrap: wrap; flex-basis: 100%; }
+  main { padding: 20px 16px; }
+  .head h1 { font-size: 26px; }
+  .board-row { grid-template-columns: 1fr 1fr; }
+  .board-row > div { border-left: 0 !important; border-top: 1px solid var(--rule); }
+  .board-row > div:nth-child(-n+2) { border-top: 0; }
+  .board-row > div:nth-child(even) { border-left: 1px solid var(--rule) !important; }
+  .board-row > div:nth-child(5) { grid-column: 1 / -1; border-left: 0 !important; }
+  .board-row dd { font-size: 22px; }
+  .panel-bar { padding: 0 8px; }
+  .panel-bar .seg { margin: 6px 8px 8px; }
+  .panel-head { padding: 16px 14px 4px; }
+  .panel-body { padding: 6px 14px 16px; }
+  .m3 { grid-template-columns: 1fr; }
+  .m7 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plate { grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+  .plate > :first-child { grid-column: 1 / -1; }
+  .departures .bar, .departures .dep-wrap { padding-left: 14px; padding-right: 14px; }
+  footer { padding: 16px; }
+}
+</style>
+</head>
+<body class="plain">
+<header class="shell">
+  <div class="shell-in">
+    <a class="brand" href="#"><svg viewBox="0 0 26 26" aria-hidden="true"><rect width="26" height="26" rx="5" fill="currentColor" opacity=".14"/><path d="M4 13h3l2-5 3 10 3-12 3 9 2-2h2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Tremor Lab</a>
+    <nav class="nav" aria-label="Main"><a href="#">Home</a><a href="#" aria-current="page">Trends</a><a href="#">Report</a><a href="#">Settings</a></nav>
+    <div class="link-state" role="status"><i></i><span>Board</span><b>Connected</b></div>
+  </div>
+</header>
+
+<div class="filters" role="region" aria-label="Filters">
+  <div class="filters-in">
+    <div class="fgroup"><span class="flabel" id="lw">Window</span><div class="seg" role="group" aria-labelledby="lw" data-filter="days"><button data-v="7">Last 7 days</button><button data-v="14" aria-pressed="true">Last 14 days</button></div></div>
+    <div class="fgroup"><span class="flabel" id="lh">Hand</span><div class="seg" role="group" aria-labelledby="lh" data-filter="hand"><button data-v="both" aria-pressed="true">Both</button><button data-v="left">Left</button><button data-v="right">Right</button></div></div>
+    <div class="fgroup"><span class="flabel" id="lm">View</span><div class="seg" role="group" aria-labelledby="lm" data-filter="mode"><button data-v="plain" aria-pressed="true">Plain</button><button data-v="detail">Detail</button></div></div>
+    <div class="readout" aria-live="polite"><span id="readout"></span><span class="sample"><svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.5v3M6 8.3v.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Sample data</span></div>
+    <p class="hand-note" id="hand-note" hidden>The hand filter applies to the tap test. Rest, posture and reach are recorded with the right hand.</p>
+  </div>
+</div>
+
+<main>
+  <div class="head"><h1>Trends</h1><p id="period"></p></div>
+  <dl class="board-row" id="summary"></dl>
+
+  <section class="panel" aria-label="Charts">
+    <div class="panel-bar">
+      <div class="tabs" role="tablist" aria-label="Chart views" id="tabs"></div>
+      <div class="seg" role="group" aria-label="Show as" data-filter="as"><button data-v="chart" aria-pressed="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13h12M3 10l3-4 3 2 4-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Chart</button><button data-v="table"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3h12v10H2zM2 6.5h12M2 10h12M6.5 3v10" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Table</button></div>
+    </div>
+    <div class="panel-head"><div><h2 id="v-title"></h2><p id="v-desc"></p></div><div id="v-sub"></div></div>
+    <div class="panel-body" id="v-body" role="tabpanel"></div>
+  </section>
+
+  <section class="panel departures" aria-labelledby="dep-h">
+    <div class="bar"><h2 id="dep-h">Latest checks</h2><span class="flabel" id="dep-n"></span></div>
+    <div class="dep-wrap" id="dep"></div>
+  </section>
+</main>
+<footer><span>Tremor Lab is a tracking tool, not a medical device. Discuss results with your doctor.</span><span>All data stays on this computer.</span></footer>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script src="shared/tremor-data.js"></script>
+<script>
+(() => {
+const D = window.TREMOR_DATA;
+const state = { days: 14, hand: 'both', mode: 'plain', as: 'chart', view: 'since', sub: 'average' };
+const NS = 'http://www.w3.org/2000/svg';
+const $ = (id) => document.getElementById(id);
+
+// ---------- helpers ----------
+function s(tag, a = {}, kids = []) { const n = document.createElementNS(NS, tag); for (const k in a) if (a[k] != null) n.setAttribute(k, a[k]); for (const c of [].concat(kids)) if (c != null) n.append(c); return n; }
+function h(tag, a = {}, kids = []) { const n = document.createElement(tag); for (const k in a) { if (a[k] == null) continue; if (k === 'html') n.innerHTML = a[k]; else if (k === 'class') n.className = a[k]; else n.setAttribute(k, a[k]); } for (const c of [].concat(kids)) if (c != null) n.append(typeof c === 'string' ? document.createTextNode(c) : c); return n; }
+const txt = (x, y, str, a = {}) => s('text', { x, y, 'font-size': 12, fill: 'var(--ink-2)', ...a }, [document.createTextNode(str)]);
+const lin = (d0, d1, r0, r1) => (v) => r0 + ((v - d0) / (d1 - d0)) * (r1 - r0);
+const fmtDate = (iso, long) => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', long ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short' });
+const dow = (iso) => new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short' });
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m % 60)).padStart(2, '0')}`;
+const dur = (hrs) => { const m = Math.round(hrs * 60); const H = Math.floor(m / 60), M = m % 60; return H ? `${H} h${M ? ' ' + String(M).padStart(2, '0') + ' min' : ''}` : `${M} min`; };
+const durShort = (hrs) => { const m = Math.round(hrs * 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+const halfH = (x) => { const w = Math.floor(x), f = x - w; const n = f >= 0.5 ? (w ? `${w}½` : '½') : String(w); return `${n} hour${x === 1 ? '' : 's'}`; };
+const mean = (xs) => xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : null;
+const q = (xs, p) => { const a = [...xs].sort((x, y) => x - y); const i = (a.length - 1) * p, lo = Math.floor(i); return a[lo] + (a[Math.min(lo + 1, a.length - 1)] - a[lo]) * (i - lo); };
+const r1 = (x) => Math.round(x * 10) / 10;
+const detail = () => state.mode === 'detail';
+const rampVar = (score) => `var(--s${score < 10 ? 1 : score < 20 ? 2 : score < 30 ? 3 : score < 40 ? 4 : 5})`;
+
+const tip = $('tip');
+function showTip(html, node) {
+  tip.innerHTML = html; tip.classList.add('on');
+  const b = node.getBoundingClientRect(), t = tip.getBoundingClientRect();
+  let x = b.left + b.width / 2 - t.width / 2, y = b.top - t.height - 10;
+  if (y < 8) y = b.bottom + 10;
+  x = Math.max(8, Math.min(x, innerWidth - t.width - 8));
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => tip.classList.remove('on');
+function hit(node, html, label, onIn) {
+  node.setAttribute('tabindex', '0'); node.setAttribute('role', 'img'); node.setAttribute('aria-label', label); node.classList.add('hit');
+  const on = () => { showTip(typeof html === 'function' ? html() : html, node); onIn && onIn(); };
+  node.addEventListener('mouseenter', on); node.addEventListener('focus', on);
+  node.addEventListener('mouseleave', hideTip); node.addEventListener('blur', hideTip);
+  return node;
+}
+function frame(el, height, pad) {
+  const W = Math.max(240, el.clientWidth || el.parentElement.clientWidth);
+  const svg = s('svg', { viewBox: `0 0 ${W} ${height}`, height, role: 'group' });
+  el.append(svg);
+  return { svg, W, H: height, x0: pad.l, x1: W - pad.r, y0: height - pad.b, y1: pad.t };
+}
+function yGrid(f, y, ticks, fmt) {
+  for (const t of ticks) {
+    f.svg.append(s('line', { x1: f.x0, x2: f.x1, y1: y(t), y2: y(t), stroke: 'var(--grid)', 'stroke-width': 1 }));
+    f.svg.append(txt(f.x0 - 8, y(t) + 4, fmt(t), { 'text-anchor': 'end', class: 'axis' }));
+  }
+}
+function plainY(f) {
+  f.svg.append(txt(f.x0 - 8, f.y1 + 10, 'Higher', { 'text-anchor': 'end' }));
+  f.svg.append(txt(f.x0 - 8, f.y0, 'Lower', { 'text-anchor': 'end' }));
+  f.svg.append(s('line', { x1: f.x0, x2: f.x1, y1: f.y0, y2: f.y0, stroke: 'var(--grid)' }));
+}
+function seriesPath(pts, color) {
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('');
+  const p = s('path', { d, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', class: 'series' });
+  requestAnimationFrame(() => { try { p.style.setProperty('--len', Math.ceil(p.getTotalLength())); } catch (e) {} });
+  return p;
+}
+const dot = (x, y, fill, r = 4.5) => s('circle', { cx: x, cy: y, r, fill, stroke: 'var(--surface)', 'stroke-width': 2 });
+const niceMax = (v, step) => Math.ceil(v / step) * step;
+
+// ---------- data slice ----------
+function slice() {
+  const days = D.daily.slice(-state.days);
+  const start = days[0].date;
+  const checks = D.checks.filter((c) => c.date >= start);
+  const doses = D.doses.filter((d) => d.date >= start);
+  const bins = [];
+  for (let b = 0; b < 12; b++) {
+    const xs = checks.filter((c) => c.hours_since_dose != null && c.hours_since_dose >= b / 2 && c.hours_since_dose < b / 2 + 0.5).map((c) => c.rest.strength_ms2);
+    if (xs.length) bins.push({ start_h: b / 2, mean: mean(xs), count: xs.length });
+  }
+  const sortedRest = checks.map((c) => c.rest.strength_ms2).sort((a, b) => a - b);
+  const median = q(sortedRest, 0.5);
+  const ret = bins.find((b) => b.start_h >= 1 && b.mean > median && b.count >= 3);
+  const firstN = state.days === 14 ? 7 : 4;
+  const firstDates = new Set(days.slice(0, firstN).map((d) => d.date));
+  const lastDates = new Set(days.slice(-3).map((d) => d.date));
+  const first = checks.filter((c) => firstDates.has(c.date)), last = checks.filter((c) => lastDates.has(c.date));
+  const low = bins.filter((b) => b.start_h >= 0.5).reduce((a, b) => (b.mean < a.mean ? b : a), { mean: Infinity });
+  return { days, checks, doses, bins, median, ret: ret ? ret.start_h : null, first, last, firstN, low };
+}
+const tapOf = (c) => state.hand === 'left' ? c.tap.left.taps_per_sec : state.hand === 'right' ? c.tap.right.taps_per_sec : (c.tap.left.taps_per_sec + c.tap.right.taps_per_sec) / 2;
+const TESTS = [
+  { k: 'rest', name: 'Rest', what: 'Hand resting, sensor in an open palm', metric: 'Strength score', unit: '/100', get: (c) => c.rest.score, lower: 'lower tremor' },
+  { k: 'posture', name: 'Posture', what: 'Arm held out over the distance sensor', metric: 'Strength score', unit: '/100', get: (c) => c.posture.score, lower: 'lower tremor' },
+  { k: 'reach', name: 'Reach', what: 'Fingertip lowered slowly to the sensor', metric: 'Smoothness', unit: 'mm', get: (c) => c.reach.smoothness_mm, lower: 'smoother', note: 'Lower is smoother' },
+  { k: 'tap', name: 'Tap', what: 'Thumb and finger taps, 10 s per hand', metric: 'Tap speed', unit: 'taps/s', get: tapOf, higher: true },
+];
+
+// ---------- summary + readout ----------
+function renderTop(S) {
+  const nd = S.doses.length;
+  $('readout').innerHTML = `<strong>${fmtDate(S.days[0].date)} – ${fmtDate(S.days.at(-1).date)}</strong> · ${S.checks.length} checks · ${nd} doses`;
+  $('period').textContent = `${fmtDate(S.days[0].date, true)} to ${fmtDate(S.days.at(-1).date, true)} 2026`;
+  const L = S.checks.at(-1);
+  const ret = S.ret == null ? '<dd>Not enough checks yet</dd>' : `<dd>about ${halfH(S.ret)} <small>after a dose</small></dd>`;
+  $('summary').innerHTML = `
+    <div><dt>Checks</dt><dd>${S.checks.length} <small class="d-only">in ${S.days.length} days</small></dd></div>
+    <div><dt>Days in a row</dt><dd>${D.summary.streak_days}</dd></div>
+    <div><dt>Tremor tends to rise again</dt>${ret}</div>
+    <div><dt>Doses each day</dt><dd class="dose-times num">${D.dose_times.map((t) => `<span>${t}</span>`).join('')}</dd></div>
+    <div><dt>Latest check</dt><dd class="num">${hhmm(L.minute)} <small>${dow(L.date)} · ${dur(L.hours_since_dose)} after ${L.dose_slot.toLowerCase()} dose</small></dd></div>`;
+}
+
+// ---------- views ----------
+const VIEWS = [
+  { id: 'since', label: 'Since dose' },
+  { id: 'timetable', label: 'Day timetable' },
+  { id: 'days', label: 'Across days' },
+  { id: 'tests', label: 'By test' },
+  { id: 'hands', label: 'Left vs right' },
+  { id: 'freq', label: 'Frequency', detail: true },
+];
+function renderTabs() {
+  const t = $('tabs'); t.innerHTML = '';
+  for (const v of VIEWS) {
+    if (v.detail && !detail()) continue;
+    const b = h('button', { role: 'tab', id: 'tab-' + v.id, 'aria-selected': String(state.view === v.id), tabindex: state.view === v.id ? '0' : '-1', 'aria-controls': 'v-body' }, v.label);
+    b.onclick = () => { state.view = v.id; render(); };
+    t.append(b);
+  }
+  t.onkeydown = (e) => {
+    if (!['ArrowRight', 'ArrowLeft'].includes(e.key)) return;
+    const bs = [...t.children], i = bs.findIndex((b) => b.getAttribute('aria-selected') === 'true');
+    const n = bs[(i + (e.key === 'ArrowRight' ? 1 : -1) + bs.length) % bs.length];
+    n.click(); $('tab-' + state.view).focus();
+  };
+}
+
+function subToggle(opts) {
+  const g = h('div', { class: 'seg', role: 'group', 'aria-label': 'Chart form' });
+  for (const [v, l] of opts) { const b = h('button', { 'aria-pressed': String(state.sub === v) }, l); b.onclick = () => { state.sub = v; render(); }; g.append(b); }
+  return g;
+}
+
+function table(caption, head, rows, rightFrom = 1) {
+  const t = h('table', { 'aria-label': caption });
+  t.append(h('thead', {}, h('tr', {}, head.map((x, i) => h('th', { class: i >= rightFrom ? 'r' : null }, x)))));
+  t.append(h('tbody', {}, rows.map((r) => h('tr', {}, r.map((x, i) => h('td', { class: i >= rightFrom ? 'r' : null, html: String(x) }))))));
+  return h('div', {}, [h('p', { class: 'cap' }, caption), h('div', { class: 'tbl-wrap' }, t)]);
+}
+
+// Since dose
+function viewSince(S, body) {
+  const det = detail();
+  const yMax = niceMax(Math.max(...S.checks.map((c) => c.rest.strength_ms2), 0.4), 0.1);
+  if (state.as === 'table') {
+    body.append(table('Rest-test strength by time since the most recent dose', ['Hours after dose', det ? 'Mean strength (m/s²)' : 'Average', 'Checks'],
+      S.bins.map((b) => [`${b.start_h.toFixed(1)}–${(b.start_h + 0.5).toFixed(1)} h`, det ? b.mean.toFixed(3) : (b.mean > S.median ? 'Above typical' : 'At or below typical'), b.count])));
+    return;
+  }
+  const mk = (el, height, pts, opts = {}) => {
+    const f = frame(el, height, { l: det ? 52 : 56, r: 16, t: 18, b: 28 });
+    const x = lin(0, 6, f.x0, f.x1), y = lin(0, yMax, f.y0, f.y1);
+    if (det && !opts.mini) yGrid(f, y, [0, 0.1, 0.2, 0.3, 0.4, 0.5].filter((t) => t <= yMax), (t) => t.toFixed(1));
+    else if (!opts.mini) plainY(f);
+    else { f.svg.append(s('line', { x1: f.x0, x2: f.x1, y1: f.y0, y2: f.y0, stroke: 'var(--grid)' })); }
+    for (let t = 0; t <= 6; t += opts.mini ? 2 : 1) {
+      f.svg.append(txt(x(t), f.y0 + 18, t === 0 ? 'Dose' : `${t} h`, { 'text-anchor': t === 0 ? 'start' : 'middle', class: 'axis', 'font-size': opts.mini ? 11 : 12 }));
+      if (t) f.svg.append(s('line', { x1: x(t), x2: x(t), y1: f.y0, y2: f.y0 + 4, stroke: 'var(--rule)' }));
+    }
+    f.svg.append(s('rect', { x: x(0) - 1.5, y: f.y1, width: 3, height: f.y0 - f.y1, fill: 'var(--dose)', rx: 1 }));
+    if (det && !opts.mini) {
+      f.svg.append(s('line', { x1: f.x0, x2: f.x1, y1: y(S.median), y2: y(S.median), stroke: 'var(--ink-3)', 'stroke-width': 1 }));
+      f.svg.append(txt(f.x1, y(S.median) - 6, `Window median ${S.median.toFixed(2)} m/s²`, { 'text-anchor': 'end', 'font-size': 11 }));
+    }
+    return { f, x, y };
+  };
+  const tipBin = (b) => det ? `<b>${b.start_h.toFixed(1)}–${(b.start_h + 0.5).toFixed(1)} h after a dose</b><br>Mean ${b.mean.toFixed(3)} m/s² · n ${b.count}` : `<b>${dur(b.start_h)}–${dur(b.start_h + 0.5)} after a dose</b><br>${b.mean > S.median ? 'Above' : 'At or below'} the typical level · ${b.count} checks`;
+  const tipCheck = (c) => `<b>${fmtDate(c.date, true)}, ${hhmm(c.minute)}</b><br>${dur(c.hours_since_dose)} after the ${c.dose_slot.toLowerCase()} dose<br>${det ? `Rest ${c.rest.strength_ms2.toFixed(3)} m/s² · score ${c.rest.score}` : `Rest score ${Math.round(c.rest.score)} of 100`}`;
+  const avgLine = (g, x, y, color = 'var(--line)', bins = S.bins) => g.svg.append(seriesPath(bins.map((b) => [x(b.start_h + 0.25), y(b.mean)]), color));
+
+  if (state.sub === 'average' || state.sub === 'every') {
+    const wrap = h('div', { class: 'chart drawn' }); body.append(wrap);
+    if (state.sub === 'average') {
+      wrap.before(h('div', { class: 'legend' }, [h('span', {}, [h('i', { class: 'key-line', style: 'background:var(--line)' }), 'Average rest-test strength, each half hour']), h('span', {}, [h('i', { class: 'key-dose' }), 'Dose taken'])]));
+    } else {
+      wrap.before(h('div', { class: 'legend' }, [h('span', {}, [h('i', { class: 'key-dot', style: 'background:var(--line)' }), 'One rest test']), h('span', {}, [h('i', { class: 'key-line', style: 'background:var(--ink-3)' }), 'Half-hour average']), h('span', {}, [h('i', { class: 'key-dose' }), 'Dose taken'])]));
+    }
+    const { f, x, y } = mk(wrap, 300, []);
+    if (state.sub === 'average') {
+      if (S.ret != null) {
+        f.svg.append(s('rect', { x: x(S.ret), y: f.y1, width: f.x1 - x(S.ret), height: f.y0 - f.y1, fill: 'var(--wash)' }));
+        f.svg.append(s('line', { x1: x(S.ret), x2: x(S.ret), y1: f.y1, y2: f.y0, stroke: 'var(--ink-2)', 'stroke-width': 1 }));
+        f.svg.append(txt(x(S.ret) + 8, f.y1 + 12, `Rises again ≈ ${halfH(S.ret)}`, { fill: 'var(--ink)', 'font-size': 13, 'font-weight': 600 }));
+      }
+      const area = S.bins.map((b) => [x(b.start_h + 0.25), y(b.mean)]);
+      avgLine({ svg: f.svg }, x, y);
+      S.bins.forEach((b) => {
+        const cx = x(b.start_h + 0.25), cy = y(b.mean);
+        f.svg.append(dot(cx, cy, 'var(--line)'));
+        f.svg.append(hit(s('circle', { cx, cy, r: 14 }), tipBin(b), `${b.start_h} to ${b.start_h + 0.5} hours after dose, ${b.count} checks`));
+      });
+      const lowB = S.low; if (isFinite(lowB.mean)) f.svg.append(txt(x(lowB.start_h + 0.25), y(lowB.mean) + 22, det ? `Lowest ${lowB.mean.toFixed(2)}` : 'Lowest', { 'text-anchor': 'middle', fill: 'var(--ink)' }));
+      void area;
+    } else {
+      avgLine({ svg: f.svg }, x, y, 'var(--ink-3)');
+      S.checks.filter((c) => c.hours_since_dose != null).forEach((c) => {
+        const cx = x(Math.min(c.hours_since_dose, 6)), cy = y(c.rest.strength_ms2);
+        f.svg.append(dot(cx, cy, 'var(--line)'));
+        f.svg.append(hit(s('circle', { cx, cy, r: 12 }), tipCheck(c), `Check ${fmtDate(c.date)} ${hhmm(c.minute)}`));
+      });
+      const pre = S.checks.filter((c) => c.hours_since_dose == null).length;
+      if (pre) body.append(h('p', { class: 'sub-title' }, `${pre} check${pre > 1 ? 's' : ''} before the first dose of the day ${pre > 1 ? 'are' : 'is'} not shown.`));
+    }
+    // count strip, its own scale
+    body.append(h('p', { class: 'sub-title' }, 'Checks in each half hour'));
+    const cw = h('div', { class: 'chart' }); body.append(cw);
+    const g = frame(cw, 64, { l: det ? 52 : 56, r: 16, t: 6, b: 8 });
+    const x2 = lin(0, 6, g.x0, g.x1), maxC = Math.max(...S.bins.map((b) => b.count));
+    const yc = lin(0, maxC, g.y0, g.y1);
+    g.svg.append(s('line', { x1: g.x0, x2: g.x1, y1: g.y0, y2: g.y0, stroke: 'var(--rule)' }));
+    g.svg.append(txt(g.x0 - 8, g.y1 + 8, String(maxC), { 'text-anchor': 'end', class: 'axis' }));
+    g.svg.append(txt(g.x0 - 8, g.y0, '0', { 'text-anchor': 'end', class: 'axis' }));
+    const bw = Math.min(24, (x2(0.5) - x2(0)) - 2);
+    S.bins.forEach((b) => {
+      const cx = x2(b.start_h + 0.25), top = yc(b.count), hgt = g.y0 - top;
+      g.svg.append(s('path', { d: `M${cx - bw / 2},${g.y0}V${top + 4}q0,-4 4,-4h${bw - 8}q4,0 4,4V${g.y0}Z`, fill: 'var(--s2)' }));
+      g.svg.append(hit(s('rect', { x: cx - 14, y: g.y1, width: 28, height: g.y0 - g.y1 }), `<b>${b.count} checks</b><br>${b.start_h.toFixed(1)}–${(b.start_h + 0.5).toFixed(1)} h after a dose`, `${b.count} checks`));
+      void hgt;
+    });
+    return;
+  }
+  if (state.sub === 'slot') {
+    const grid = h('div', { class: 'multiples m3' }); body.append(grid);
+    body.firstChild.before(h('div', { class: 'legend' }, [h('span', {}, [h('i', { class: 'key-dot', style: 'background:var(--line)' }), 'One rest test']), h('span', {}, [h('i', { class: 'key-line', style: 'background:var(--line)' }), 'Half-hour average']), h('span', {}, [h('i', { class: 'key-dose' }), 'Dose taken']), h('span', {}, 'Same scale in every panel')]));
+    for (const slot of ['Morning', 'Midday', 'Evening']) {
+      const cs = S.checks.filter((c) => c.dose_slot === slot);
+      const time = D.dose_times[['Morning', 'Midday', 'Evening'].indexOf(slot)];
+      const cell = h('div', {}, [h('h3', {}, [`${slot} dose`, h('small', {}, `${time} · ${cs.length} checks`)])]); grid.append(cell);
+      const w = h('div', { class: 'chart drawn' }); cell.append(w);
+      const { f, x, y } = mk(w, 210, []);
+      const bins = [];
+      for (let b = 0; b < 12; b++) { const xs = cs.filter((c) => c.hours_since_dose >= b / 2 && c.hours_since_dose < b / 2 + 0.5).map((c) => c.rest.strength_ms2); if (xs.length) bins.push({ start_h: b / 2, mean: mean(xs), count: xs.length }); }
+      if (bins.length > 1) avgLine({ svg: f.svg }, x, y, 'var(--line)', bins);
+      cs.forEach((c) => { const cx = x(c.hours_since_dose), cy = y(c.rest.strength_ms2); f.svg.append(dot(cx, cy, 'var(--line)', 4)); f.svg.append(hit(s('circle', { cx, cy, r: 12 }), tipCheck(c), `Check ${fmtDate(c.date)} ${hhmm(c.minute)}`)); });
+    }
+    return;
+  }
+  // by day: the same since-dose form repeated for every day
+  body.append(h('div', { class: 'legend' }, [h('span', {}, [h('i', { class: 'key-dot', style: 'background:var(--line)' }), 'Rest tests that day']), h('span', {}, [h('i', { class: 'key-line', style: 'background:var(--ink-3)' }), `${state.days}-day average curve`]), h('span', {}, [h('i', { class: 'key-dose' }), 'Dose'])]));
+  const grid = h('div', { class: 'multiples m7' }); body.append(grid);
+  for (const d of S.days) {
+    const cs = S.checks.filter((c) => c.date === d.date && c.hours_since_dose != null);
+    const cell = h('div', {}, [h('h3', {}, [fmtDate(d.date, true), h('small', {}, `${cs.length}`)])]); grid.append(cell);
+    const w = h('div', { class: 'chart' }); cell.append(w);
+    const { f, x, y } = mk(w, 96, [], { mini: true });
+    f.svg.append(s('path', { d: S.bins.map((b, i) => `${i ? 'L' : 'M'}${x(b.start_h + 0.25)},${y(b.mean)}`).join(''), fill: 'none', stroke: 'var(--ink-3)', 'stroke-width': 1.5 }));
+    cs.forEach((c) => { const cx = x(c.hours_since_dose), cy = y(c.rest.strength_ms2); f.svg.append(dot(cx, cy, 'var(--line)', 4)); f.svg.append(hit(s('circle', { cx, cy, r: 12 }), tipCheck(c), `Check ${hhmm(c.minute)}`)); });
+  }
+}
+
+// Day timetable (signature)
+function viewTimetable(S, body) {
+  const det = detail();
+  const rows = [...S.days].reverse();
+  if (state.as === 'table') {
+    body.append(table('Doses and checks for each day', ['Day', 'Doses', 'Checks (time · rest score)', det ? 'Mean rest (m/s²)' : 'Checks'],
+      rows.map((d) => [fmtDate(d.date, true), S.doses.filter((x) => x.date === d.date).map((x) => hhmm(x.minute)).join(', '), S.checks.filter((c) => c.date === d.date).map((c) => `${hhmm(c.minute)} · ${Math.round(c.rest.score)}`).join(', '), det ? d.mean_rest.toFixed(3) : d.count]), 3));
+    return;
+  }
+  const readline = h('div', { class: 'readline', 'aria-live': 'polite' }); body.append(readline);
+  const setRead = (c) => {
+    readline.innerHTML = `<b class="num">${dow(c.date)} ${fmtDate(c.date)} · ${hhmm(c.minute)}</b><span>${c.hours_since_dose == null ? 'before the first dose' : `${dur(c.hours_since_dose)} after the ${c.dose_slot.toLowerCase()} dose`}</span>` +
+      `<span class="num">Rest <b>${Math.round(c.rest.score)}</b></span><span class="num">Posture <b>${Math.round(c.posture.score)}</b></span><span class="num">Reach <b>${c.reach.smoothness_mm.toFixed(1)}</b> mm</span><span class="num">Tap <b>${tapOf(c).toFixed(1)}</b>/s</span>` +
+      (det ? `<span class="muted num">${c.rest.strength_ms2.toFixed(3)} m/s² · ${c.rest.peak_hz ? c.rest.peak_hz.toFixed(2) + ' Hz' : 'no clear peak'}</span>` : '');
+  };
+  setRead(S.checks.at(-1));
+  body.append(h('div', { class: 'legend' }, [
+    h('span', {}, [h('i', { class: 'key-dose' }), 'Dose, with the time taken']),
+    h('span', {}, [h('span', { class: 'ramp', 'aria-hidden': 'true' }, [1, 2, 3, 4, 5].map((i) => h('i', { style: `background:var(--s${i})` }))), det ? 'Rest score 0–10 … 40+' : 'Check: lighter is calmer, darker is stronger tremor']),
+    h('span', {}, [h('span', { class: 'num', style: 'color:var(--ink)' }, '4:56'), 'Time between doses']),
+  ]));
+  const wrap = h('div', { class: 'chart' }); body.append(wrap);
+  const W = Math.max(300, wrap.clientWidth || body.clientWidth);
+  const narrow = W < 560;
+  const L = narrow ? 52 : 110, R = narrow ? 6 : 96, rowH = narrow ? 50 : 46, top = 26;
+  const H = top + rows.length * rowH + 6;
+  const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, height: H }); wrap.append(svg);
+  const x = lin(7 * 60, 22 * 60, L, W - R);
+  for (let hr = 7; hr <= 22; hr += narrow ? 3 : 1) {
+    svg.append(s('line', { x1: x(hr * 60), x2: x(hr * 60), y1: top - 6, y2: H - 6, stroke: 'var(--grid)' }));
+    svg.append(txt(x(hr * 60), top - 12, `${String(hr).padStart(2, '0')}:00`, { 'text-anchor': 'middle', class: 'axis', 'font-size': 11 }));
+  }
+  if (!narrow) svg.append(txt(W - 8, top - 12, det ? 'Mean · n' : 'Checks', { 'font-size': 11, 'text-anchor': 'end' }));
+  rows.forEach((d, i) => {
+    const y0 = top + i * rowH, cy = y0 + rowH / 2 + 4;
+    if (i % 2 === 0) svg.append(s('rect', { x: 0, y: y0, width: W, height: rowH, fill: 'var(--row)' }));
+    const today = i === 0;
+    svg.append(txt(narrow ? 2 : 10, cy + 4, narrow ? fmtDate(d.date) : (today ? 'Today' : fmtDate(d.date, true)), { fill: 'var(--ink)', 'font-size': 13, 'font-weight': today ? 600 : 400 }));
+    const ds = S.doses.filter((x) => x.date === d.date);
+    ds.forEach((dz, j) => {
+      const dx = x(dz.minute);
+      svg.append(s('rect', { x: dx - 1.5, y: y0 + 8, width: 3, height: rowH - 14, rx: 1, fill: 'var(--dose)' }));
+      svg.append(txt(dx + 4, y0 + 16, hhmm(dz.minute), { 'font-size': 10, fill: 'var(--ink-2)', class: 'axis' }));
+      svg.append(hit(s('rect', { x: dx - 12, y: y0 + 2, width: 24, height: rowH - 4 }), `<b>${dz.slot} dose</b><br>${fmtDate(d.date, true)}, ${hhmm(dz.minute)}`, `${dz.slot} dose ${hhmm(dz.minute)}`));
+      const nx = ds[j + 1];
+      if (nx) {
+        const a = dx + 8, b = x(nx.minute) - 8, ly = y0 + rowH - 7;
+        svg.append(s('path', { d: `M${a},${ly - 3}V${ly}H${b}V${ly - 3}`, fill: 'none', stroke: 'var(--rule)', 'stroke-width': 1 }));
+        const lab = durShort((nx.minute - dz.minute) / 60);
+        svg.append(s('rect', { x: (a + b) / 2 - 15, y: ly - 7, width: 30, height: 12, fill: i % 2 === 0 ? 'var(--row)' : 'var(--surface)' }));
+        svg.append(txt((a + b) / 2, ly + 3, lab, { 'text-anchor': 'middle', 'font-size': 10, fill: 'var(--ink-2)', class: 'axis' }));
+      }
+    });
+    S.checks.filter((c) => c.date === d.date).forEach((c) => {
+      const cx = x(c.minute);
+      svg.append(s('circle', { cx, cy: cy - 2, r: 7, fill: rampVar(c.rest.score), stroke: 'var(--surface)', 'stroke-width': 2 }));
+      svg.append(hit(s('circle', { cx, cy: cy - 2, r: 14 }), `<b>${hhmm(c.minute)}</b> · rest ${Math.round(c.rest.score)} of 100`, `Check ${fmtDate(c.date)} ${hhmm(c.minute)}, rest score ${Math.round(c.rest.score)}`, () => setRead(c)));
+    });
+    if (!narrow) svg.append(txt(W - 8, cy + 4, det ? `${d.mean_rest.toFixed(2)} · ${d.count}` : `${d.count}`, { fill: 'var(--ink)', class: 'axis', 'font-size': 13, 'text-anchor': 'end' }));
+  });
+}
+
+// Across days
+function viewDays(S, body) {
+  const det = detail();
+  const fw = S.first.map((c) => c.rest.strength_ms2), lo = q(fw, 0.25), hi = q(fw, 0.75);
+  if (state.as === 'table') {
+    body.append(table('Daily average of the rest test', ['Day', det ? 'Mean (m/s²)' : 'Compared with first days', 'Checks'],
+      S.days.map((d) => [fmtDate(d.date, true), det ? d.mean_rest.toFixed(3) : (d.mean_rest > hi ? 'Above the usual range' : d.mean_rest < lo ? 'Below the usual range' : 'Within the usual range'), d.count])));
+    return;
+  }
+  body.append(h('div', { class: 'legend' }, [h('span', {}, [h('i', { class: 'key-dot', style: 'background:var(--s3);border-radius:2px' }), 'Daily average, rest test']), h('span', {}, [h('i', { class: 'key-band' }), `Middle half of checks, first ${S.firstN} days`])]));
+  const wrap = h('div', { class: 'chart' }); body.append(wrap);
+  const f = frame(wrap, 320, { l: det ? 52 : 56, r: 16, t: 20, b: det ? 46 : 32 });
+  const yMax = niceMax(Math.max(...S.days.map((d) => d.mean_rest), hi) * 1.15, 0.1);
+  const y = lin(0, yMax, f.y0, f.y1);
+  f.svg.append(s('rect', { x: f.x0, y: y(hi), width: f.x1 - f.x0, height: y(lo) - y(hi), fill: 'var(--band)' }));
+  if (det) yGrid(f, y, [0, 0.1, 0.2, 0.3, 0.4, 0.5].filter((t) => t <= yMax), (t) => t.toFixed(1)); else plainY(f);
+  const band = (f.x1 - f.x0) / S.days.length, bw = Math.min(24, band - 2);
+  const maxD = S.days.reduce((a, d) => (d.mean_rest > a.mean_rest ? d : a));
+  S.days.forEach((d, i) => {
+    const cx = f.x0 + band * (i + 0.5), t = y(d.mean_rest);
+    f.svg.append(s('path', { d: `M${cx - bw / 2},${f.y0}V${t + 4}q0,-4 4,-4h${bw - 8}q4,0 4,4V${f.y0}Z`, fill: 'var(--s3)' }));
+    const showLab = band > 34 || i % 2 === S.days.length % 2;
+    if (showLab) f.svg.append(txt(cx, f.y0 + 16, band > 50 ? fmtDate(d.date) : String(+d.date.slice(8)), { 'text-anchor': 'middle', class: 'axis', 'font-size': 11 }));
+    if (det && showLab) f.svg.append(txt(cx, f.y0 + 32, `n ${d.count}`, { 'text-anchor': 'middle', class: 'axis', 'font-size': 10, fill: 'var(--ink-3)' }));
+    if (d === maxD || i === S.days.length - 1) f.svg.append(txt(cx, t - 6, det ? d.mean_rest.toFixed(2) : (i === S.days.length - 1 ? 'Today' : 'Highest'), { 'text-anchor': 'middle', fill: 'var(--ink)', 'font-size': 11 }));
+    f.svg.append(hit(s('rect', { x: cx - Math.max(12, band / 2), y: f.y1, width: Math.max(24, band), height: f.y0 - f.y1 }),
+      `<b>${fmtDate(d.date, true)}</b><br>${det ? `Mean ${d.mean_rest.toFixed(3)} m/s² · n ${d.count}` : `${d.count} checks · ${d.mean_rest > hi ? 'above' : d.mean_rest < lo ? 'below' : 'within'} the usual range`}`, `${fmtDate(d.date, true)}, ${d.count} checks`));
+  });
+}
+
+// By test: four plates with identical furniture
+function viewTests(S, body) {
+  const det = detail();
+  const firstLab = `First ${S.firstN} days`;
+  const rows = TESTS.map((t) => {
+    const a = mean(S.first.map(t.get)), b = mean(S.last.map(t.get));
+    const pct = ((b - a) / a) * 100;
+    const word = Math.abs(pct) < 5 ? 'About the same' : `${Math.abs(pct) < 15 ? 'A little ' : ''}${pct > 0 ? 'higher' : 'lower'}`;
+    return { t, a, b, pct, word: word.charAt(0).toUpperCase() + word.slice(1) };
+  });
+  if (state.as === 'table') {
+    body.append(table('Each test: first days compared with the last 3 days', ['Test', 'Measure', firstLab, 'Last 3 days', 'Change'],
+      rows.map((r) => [r.t.name, `${r.t.metric} (${r.t.unit})`, `${r1(r.a)} <span style="color:var(--ink-3)">n ${S.first.length}</span>`, `${r1(r.b)} <span style="color:var(--ink-3)">n ${S.last.length}</span>`, det ? `${r.pct > 0 ? '+' : ''}${r.pct.toFixed(0)}%` : r.word]), 2));
+    return;
+  }
+  body.append(h('div', { class: 'legend' }, [h('span', {}, [h('i', { class: 'key-ring' }), firstLab]), h('span', {}, [h('i', { class: 'key-dot', style: 'background:var(--line)' }), 'Last 3 days']), h('span', {}, 'Each test on its own scale')]));
+  const list = h('div', { class: 'plates' }); body.append(list);
+  for (const r of rows) {
+    const vals = S.checks.map(r.t.get), lo = Math.min(...vals), hi = Math.max(...vals);
+    const plate = h('div', { class: 'plate' }, [
+      h('div', {}, [h('h3', {}, r.t.name), h('p', { class: 'what' }, r.t.what)]),
+      h('div', {}, [h('div', { class: 'k' }, firstLab), h('div', { class: 'v', html: `${r1(r.a)}<small>${r.t.unit}</small>` }), h('div', { class: 'n d-only' }, `n ${S.first.length}`)]),
+      h('div', {}, [h('div', { class: 'k' }, 'Last 3 days'), h('div', { class: 'v', html: `${r1(r.b)}<small>${r.t.unit}</small>` }), h('div', { class: 'n d-only' }, `n ${S.last.length}`)]),
+      h('div', { class: 'dumb chart' }),
+      h('div', { class: 'chg' }, [h('span', { class: 'k' }, r.t.note || r.t.metric), h('b', {}, det ? `${r.pct > 0 ? '+' : ''}${r.pct.toFixed(0)}%` : r.word)]),
+    ]);
+    list.append(plate);
+    const f = frame(plate.querySelector('.dumb'), 54, { l: 34, r: 34, t: 10, b: 20 });
+    const x = lin(lo, hi, f.x0, f.x1), cy = 24;
+    f.svg.append(s('line', { x1: f.x0, x2: f.x1, y1: cy, y2: cy, stroke: 'var(--grid)', 'stroke-width': 1 }));
+    f.svg.append(txt(f.x0, cy + 22, r1(lo), { 'text-anchor': 'middle', class: 'axis', 'font-size': 11 }));
+    f.svg.append(txt(f.x1, cy + 22, r1(hi), { 'text-anchor': 'middle', class: 'axis', 'font-size': 11 }));
+    f.svg.append(s('line', { x1: x(r.a), x2: x(r.b), y1: cy, y2: cy, stroke: 'var(--ink-3)', 'stroke-width': 2 }));
+    f.svg.append(s('circle', { cx: x(r.a), cy, r: 5, fill: 'var(--surface)', stroke: 'var(--ink-2)', 'stroke-width': 2 }));
+    f.svg.append(dot(x(r.b), cy, 'var(--line)', 6));
+    f.svg.append(hit(s('rect', { x: Math.min(x(r.a), x(r.b)) - 14, y: 6, width: Math.abs(x(r.b) - x(r.a)) + 28, height: 36 }),
+      `<b>${r.t.name}</b><br>${firstLab}: ${r1(r.a)} ${r.t.unit}<br>Last 3 days: ${r1(r.b)} ${r.t.unit}<br>Range in window ${r1(lo)}–${r1(hi)}`, `${r.t.name}: ${r1(r.a)} to ${r1(r.b)} ${r.t.unit}`));
+  }
+}
+
+// Left vs right
+function lineChart(body, S, cfg) {
+  const det = detail();
+  const wrap = h('div', { class: 'chart drawn' }); body.append(wrap);
+  const f = frame(wrap, cfg.height, { l: 52, r: 64, t: 14, b: 28 });
+  const n = S.checks.length, x = (i) => f.x0 + (i / Math.max(1, n - 1)) * (f.x1 - f.x0);
+  const all = S.checks.flatMap((c) => cfg.hands.map((hd) => cfg.get(c, hd)));
+  const [d0, d1] = cfg.domain(all), y = lin(d0, d1, f.y0, f.y1);
+  yGrid(f, y, cfg.ticks(d0, d1), cfg.fmt);
+  S.days.forEach((d) => { const i = S.checks.findIndex((c) => c.date === d.date); if (i < 0) return; const lab = S.days.length > 7 ? String(+d.date.slice(8)) : fmtDate(d.date); if (S.days.length <= 7 || (+d.date.slice(8)) % 2 === 0) f.svg.append(txt(x(i), f.y0 + 18, lab, { class: 'axis', 'font-size': 11 })); });
+  for (const hd of cfg.hands) {
+    const col = `var(--hand-${hd[0]})`;
+    f.svg.append(seriesPath(S.checks.map((c, i) => [x(i), y(cfg.get(c, hd))]), col));
+    const last = S.checks.at(-1), ly = y(cfg.get(last, hd));
+    f.svg.append(dot(x(n - 1), ly, col, 4.5));
+    f.svg.append(txt(x(n - 1) + 10, ly + 4 + (cfg.hands.length > 1 ? (hd === 'left' ? (cfg.get(last, 'left') >= cfg.get(last, 'right') ? -6 : 6) : (cfg.get(last, 'right') > cfg.get(last, 'left') ? -6 : 6)) : 0), hd === 'left' ? 'Left' : 'Right', { fill: 'var(--ink)', 'font-size': 12 }));
+  }
+  const cross = s('line', { y1: f.y1, y2: f.y0, stroke: 'var(--ink-3)', 'stroke-width': 1, opacity: 0 }); f.svg.append(cross);
+  const ov = s('rect', { x: f.x0 - 6, y: f.y1, width: f.x1 - f.x0 + 12, height: f.y0 - f.y1, fill: 'transparent', tabindex: 0, role: 'img', 'aria-label': `${cfg.name}, ${n} checks. Use arrow keys to step through checks.`, class: 'hit' });
+  let idx = n - 1;
+  const show = (i) => { idx = Math.max(0, Math.min(n - 1, i)); const c = S.checks[idx]; cross.setAttribute('x1', x(idx)); cross.setAttribute('x2', x(idx)); cross.setAttribute('opacity', 1);
+    const fake = { getBoundingClientRect: () => { const b = ov.getBoundingClientRect(); const px = b.left + ((x(idx) - f.x0 + 6) / (f.x1 - f.x0 + 12)) * b.width; return { left: px - 1, width: 2, top: b.top, bottom: b.top + 10 }; } };
+    showTip(`<b>${fmtDate(c.date, true)}, ${hhmm(c.minute)}</b>` + cfg.hands.map((hd) => `<br>${hd === 'left' ? 'Left' : 'Right'}: ${cfg.fmtTip(cfg.get(c, hd))}`).join('') + (det && c.hours_since_dose != null ? `<br>${dur(c.hours_since_dose)} after a dose` : ''), fake); };
+  ov.addEventListener('mousemove', (e) => { const b = ov.getBoundingClientRect(); const px = ((e.clientX - b.left) / b.width) * (f.x1 - f.x0 + 12) + f.x0 - 6; show(Math.round(((px - f.x0) / (f.x1 - f.x0)) * (n - 1))); });
+  ov.addEventListener('focus', () => show(idx));
+  ov.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') { show(idx + 1); e.preventDefault(); } if (e.key === 'ArrowLeft') { show(idx - 1); e.preventDefault(); } });
+  const off = () => { hideTip(); cross.setAttribute('opacity', 0); };
+  ov.addEventListener('mouseleave', off); ov.addEventListener('blur', off);
+  f.svg.append(ov);
+}
+function viewHands(S, body) {
+  const det = detail();
+  const hands = state.hand === 'both' ? ['left', 'right'] : [state.hand];
+  const tp = (c, hd) => c.tap[hd].taps_per_sec;
+  if (state.as === 'table') {
+    const head = ['Check', ...hands.flatMap((hd) => [`${hd === 'left' ? 'Left' : 'Right'} taps/s`, ...(det ? [`${hd === 'left' ? 'Left' : 'Right'} rhythm var.`, `${hd === 'left' ? 'Left' : 'Right'} size change`] : [])])];
+    body.append(table('Tap test per hand, every check', head, [...S.checks].reverse().map((c) => [`${fmtDate(c.date)} ${hhmm(c.minute)}`, ...hands.flatMap((hd) => [tp(c, hd).toFixed(2), ...(det ? [`${(c.tap[hd].rhythm_cv * 100).toFixed(0)}%`, `${(c.tap[hd].decrement * 100).toFixed(0)}%`] : [])])])));
+    return;
+  }
+  const means = hands.map((hd) => `${hd === 'left' ? 'Left' : 'Right'} ${mean(S.checks.map((c) => tp(c, hd))).toFixed(1)} taps/s`).join(' · ');
+  body.append(h('div', { class: 'legend' }, [...hands.map((hd) => h('span', {}, [h('i', { class: 'key-line', style: `background:var(--hand-${hd[0]})` }), hd === 'left' ? 'Left hand' : 'Right hand'])), h('span', {}, `Window average: ${means}`)]));
+  lineChart(body, S, { name: 'Tap speed', height: 260, hands, get: tp, domain: (v) => [Math.floor(Math.min(...v) * 2) / 2 - 0.5, Math.ceil(Math.max(...v) * 2) / 2 + 0.5], ticks: (a, b) => { const t = []; for (let v = a; v <= b + 1e-9; v += 0.5) t.push(v); return t; }, fmt: (v) => v.toFixed(1), fmtTip: (v) => `${v.toFixed(2)} taps/s` });
+  if (det) {
+    const grid = h('div', { class: 'multiples', style: 'grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-top:18px' }); body.append(grid);
+    const a = h('div', {}, [h('h3', {}, ['Rhythm variability', h('small', {}, 'spread of time between taps, lower is steadier')])]);
+    const b = h('div', {}, [h('h3', {}, ['Tap size change', h('small', {}, 'last 3 s vs first 3 s of each 10 s test')])]);
+    grid.append(a, b);
+    lineChart(a, S, { name: 'Rhythm variability', height: 180, hands, get: (c, hd) => c.tap[hd].rhythm_cv * 100, domain: () => [0, 25], ticks: () => [0, 5, 10, 15, 20, 25], fmt: (v) => `${v}%`, fmtTip: (v) => `${v.toFixed(0)}%` });
+    lineChart(b, S, { name: 'Tap size change', height: 180, hands, get: (c, hd) => c.tap[hd].decrement * 100, domain: () => [-20, 0], ticks: () => [-20, -15, -10, -5, 0], fmt: (v) => `${v}%`, fmtTip: (v) => `${v.toFixed(0)}%` });
+  }
+}
+
+// Frequency (detail only)
+function viewFreq(S, body) {
+  const pts = S.checks.filter((c) => c.rest.peak_hz != null), none = S.checks.length - pts.length;
+  const steady = pts.filter((c) => c.rest.peak_hz >= 4.5 && c.rest.peak_hz <= 5.5).length;
+  if (state.as === 'table') {
+    body.append(table('Peak frequency of the rest test, every check', ['Check', 'Peak (Hz)', 'Strength (m/s²)'], [...S.checks].reverse().map((c) => [`${fmtDate(c.date)} ${hhmm(c.minute)}`, c.rest.peak_hz ? c.rest.peak_hz.toFixed(2) : 'No clear peak', c.rest.strength_ms2.toFixed(3)])));
+    return;
+  }
+  body.append(h('div', { class: 'legend' }, [h('span', {}, [h('i', { class: 'key-dot', style: 'background:var(--line)' }), 'Peak frequency, one rest test']), h('span', {}, [h('i', { class: 'key-band' }), '4.5–5.5 Hz']), h('span', {}, `${steady} of ${pts.length} peaks inside the band · ${none} checks with no clear peak`)]));
+  const wrap = h('div', { class: 'chart' }); body.append(wrap);
+  const f = frame(wrap, 300, { l: 52, r: 16, t: 14, b: 28 });
+  const n = S.checks.length, x = (i) => f.x0 + (i / Math.max(1, n - 1)) * (f.x1 - f.x0), y = lin(3, 12, f.y0, f.y1);
+  f.svg.append(s('rect', { x: f.x0, y: y(5.5), width: f.x1 - f.x0, height: y(4.5) - y(5.5), fill: 'var(--band)' }));
+  yGrid(f, y, [3, 4, 6, 8, 10, 12], (v) => `${v} Hz`);
+  S.days.forEach((d) => { const i = S.checks.findIndex((c) => c.date === d.date); if (i >= 0 && (S.days.length <= 7 || (+d.date.slice(8)) % 2 === 0)) f.svg.append(txt(x(i), f.y0 + 18, S.days.length > 7 ? String(+d.date.slice(8)) : fmtDate(d.date), { class: 'axis', 'font-size': 11 })); });
+  S.checks.forEach((c, i) => {
+    if (c.rest.peak_hz == null) { f.svg.append(s('line', { x1: x(i), x2: x(i), y1: f.y0 - 6, y2: f.y0, stroke: 'var(--ink-3)', 'stroke-width': 2 })); return; }
+    f.svg.append(dot(x(i), y(c.rest.peak_hz), 'var(--line)'));
+    f.svg.append(hit(s('circle', { cx: x(i), cy: y(c.rest.peak_hz), r: 12 }), `<b>${fmtDate(c.date, true)}, ${hhmm(c.minute)}</b><br>Peak ${c.rest.peak_hz.toFixed(2)} Hz · ${c.rest.strength_ms2.toFixed(3)} m/s²`, `Peak ${c.rest.peak_hz} Hz`));
+  });
+  f.svg.append(txt(f.x1, f.y0 - 10, 'Ticks on the baseline: no clear peak', { 'text-anchor': 'end', 'font-size': 11 }));
+}
+
+const COPY = {
+  since: { t: 'Tremor after each dose', p: (S) => `Rest-test strength by time since the most recent dose. Over these ${S.days.length} days it was lowest about ${halfH(S.low.start_h)} after a dose${S.ret != null ? ` and tended to rise again about ${halfH(S.ret)} after` : ''}.`, d: () => 'Rest-test band RMS, 3–12 Hz, m/s². Mean per 0.5 h bin after the most recent dose; empty bins omitted. Rises-again marker: first bin at 1 h or later whose mean is above the window median, with at least 3 checks.' },
+  timetable: { t: 'Day timetable', p: () => 'Each row is one day. Red marks are doses; dots are checks, darker means stronger tremor. Hover or tab to a dot to read it above.', d: () => 'Rows newest first, 07:00–22:00. Dot shade steps by rest strength score in five bands of 10. Brackets give the time between consecutive doses (h:mm).' },
+  days: { t: 'Across days', p: (S) => `Daily average of the rest test. The shaded band is the middle half of checks from the first ${S.firstN} days of this window.`, d: (S) => `Mean rest-test strength per local day (m/s²) with check count. Band: 25th–75th percentile of first-${S.firstN}-day checks.` },
+  tests: { t: 'Each test, then and now', p: (S) => `How each test in the last 3 days compares with the first ${S.firstN} days of this window.`, d: () => 'Metric per test as on the Results card: strength score (0–100), reach smoothness (mm, residual RMS), tap speed (taps/s). Change is relative to the first-days mean.' },
+  hands: { t: 'Left vs right', p: () => 'Tap speed for each hand, check by check.', d: () => 'Taps per second per hand. Rhythm variability is the coefficient of variation of time between taps; size change is (last 3 s − first 3 s) ÷ first 3 s of tap amplitude.' },
+  freq: { t: 'Peak frequency', p: () => '', d: () => 'Peak of the summed-axis Welch spectrum in 3–12 Hz for each rest test. No peak is reported when power stays below the noise floor.' },
+};
+
+function renderDeps(S) {
+  const det = detail();
+  const rows = [...S.checks].reverse().slice(0, 8);
+  const tapHead = state.hand === 'both' ? ['Tap L', 'Tap R'] : [state.hand === 'left' ? 'Tap L' : 'Tap R'];
+  const head = ['Day', 'Time', 'After dose', 'Rest', 'Posture', ...(det ? ['Reach mm', 'Peak Hz'] : []), ...tapHead];
+  $('dep-n').textContent = `${rows.length} of ${S.checks.length}`;
+  $('dep').innerHTML = '';
+  $('dep').append(table('Newest first. Scores are out of 100; tap is taps per second.', head, rows.map((c) => [
+    dow(c.date) + ' ' + fmtDate(c.date), `<span class="num">${hhmm(c.minute)}</span>`, c.hours_since_dose == null ? '—' : `<span class="dose-cell">${dur(c.hours_since_dose)} · ${c.dose_slot.toLowerCase()}</span>`,
+    Math.round(c.rest.score), Math.round(c.posture.score), ...(det ? [c.reach.smoothness_mm.toFixed(1), c.rest.peak_hz ? c.rest.peak_hz.toFixed(2) : '—'] : []),
+    ...(state.hand === 'both' ? [c.tap.left.taps_per_sec.toFixed(1), c.tap.right.taps_per_sec.toFixed(1)] : [c.tap[state.hand].taps_per_sec.toFixed(1)]),
+  ]), 3));
+  // the 'after dose' column is text; keep it left-aligned
+  $('dep').querySelectorAll('tr').forEach((tr) => { const c = tr.children[2]; if (c) c.classList.remove('r'); });
+}
+
+function render() {
+  document.body.className = state.mode;
+  if (state.view === 'freq' && !detail()) state.view = 'since';
+  document.querySelectorAll('[data-filter]').forEach((g) => g.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(String(state[g.dataset.filter]) === b.dataset.v))));
+  $('hand-note').hidden = state.hand === 'both';
+  const S = slice();
+  renderTop(S); renderTabs(); renderDeps(S);
+  const c = COPY[state.view];
+  $('v-title').textContent = c.t;
+  $('v-desc').textContent = detail() ? c.d(S) : c.p(S);
+  const sub = $('v-sub'); sub.innerHTML = '';
+  if (state.view === 'since' && state.as === 'chart') sub.append(subToggle([['average', 'Average'], ['every', 'Every check'], ['slot', 'By dose'], ['day', 'By day']]));
+  const body = $('v-body'); body.innerHTML = ''; body.setAttribute('aria-labelledby', 'tab-' + state.view);
+  ({ since: viewSince, timetable: viewTimetable, days: viewDays, tests: viewTests, hands: viewHands, freq: viewFreq })[state.view](S, body);
+}
+
+document.querySelectorAll('[data-filter]').forEach((g) => g.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const k = g.dataset.filter; state[k] = k === 'days' ? +b.dataset.v : b.dataset.v; render();
+}));
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 120); });
+addEventListener('scroll', hideTip, { passive: true });
+render();
+})();
+</script>
+</body>
+</html>
