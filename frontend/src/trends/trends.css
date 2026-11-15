@@ -93,6 +93,11 @@
 .trends-compare .value { margin-top: 8px; font-size: 28px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .trends-compare .value small { font-size: 14px; font-weight: 450; color: var(--t-muted); margin-left: 4px; }
 .trends-compare .ref { margin-top: 4px; font-size: 14px; color: var(--t-muted); }
+.trends-hands { display: flex; gap: 20px; margin-top: 8px; }
+.trends-hands dt { font-size: 13px; color: var(--t-muted); }
+.trends-hands dd { margin: 2px 0 0; font-size: 28px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.trends-filters { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.trends-hand.segmented-control { width: 300px; flex-shrink: 0; }
 .trends-pill { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; background: var(--t-soft); padding: 5px 10px; border-radius: 999px; white-space: nowrap; }
 
 .trends-checks { width: 100%; margin-top: 14px; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -142,6 +147,8 @@
   .trends-page h1 { font-size: 27px; }
   .trends-summary { font-size: 16px; }
   .trends-controls { flex-direction: column; align-items: stretch; }
+  .trends-filters { flex-direction: column; align-items: stretch; }
+  .trends-filters .segmented-control { width: auto; }
   .trends-tabs button { flex: 1; }
   .trends-stepper button { flex: 1; justify-content: center; }
   .trends-dl-head { display: none; }

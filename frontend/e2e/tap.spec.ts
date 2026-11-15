@@ -1,12 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import type { TapDataIn } from '../src/api/types'
 test.use({ launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } })
-async function openTap(page: Page) {
+async function openTap(page: Page, hand: 'left' | 'right' = 'right') {
   await page.goto('/check/connect')
-  await page.evaluate(() => {
+  await page.evaluate(hand => {
     const records = Object.fromEntries(['connect', 'rest', 'posture', 'reach'].map(step => [step, { runs: step === 'reach' ? 3 : 1, seconds: 30 }]))
-    sessionStorage.setItem('tremor-check-v2', JSON.stringify({ mode: 'sensor', checkId: 42, hand: 'right', records }))
-  })
+    sessionStorage.setItem('tremor-check-v2', JSON.stringify({ mode: 'sensor', checkId: 42, hand, records }))
+  }, hand)
   await page.goto('/check/tap')
 }
 async function mockDetector(page: Page) {
@@ -27,7 +27,7 @@ test('real local model loads, missing hands fail safely, and camera stops', asyn
     return route.fulfill({ json: { test_id: 10, status: 'failed', fail_reason: 'no_taps_detected', result: null } })
   })
   await openTap(page)
-  await page.getByRole('button', { name: 'Start left hand', exact: true }).click()
+  await page.getByRole('button', { name: 'Start right hand', exact: true }).click()
   await expect(page.getByText('No taps were found.', { exact: false }).first()).toBeVisible({ timeout: 35000 })
   expect(payload!.frames.length).toBeGreaterThan(5)
   expect(payload!.frames.every(frame => frame.lm === null)).toBe(true)
@@ -38,7 +38,7 @@ test('real local model loads, missing hands fail safely, and camera stops', asyn
   expect(await page.locator('video').evaluate(el => (el as HTMLVideoElement).srcObject)).toBeNull()
   await expect(page.getByRole('button', { name: 'Skip this step' })).toBeEnabled()
 })
-test('both hands submit separately and left hand progress survives refresh', async ({ page }) => {
+test('tap records only the hand chosen for the check, once', async ({ page }) => {
   await mockDetector(page)
   await page.clock.install()
   const hands: string[] = []
@@ -51,32 +51,25 @@ test('both hands submit separately and left hand progress survives refresh', asy
     payloads.push(route.request().postDataJSON())
     return route.fulfill({ json: { test_id: hands.length, status: 'done', fail_reason: null, result: null } })
   })
-  await openTap(page)
-  for (const hand of ['left', 'right']) {
-    await page.getByRole('button', { name: `Start ${hand} hand`, exact: true }).click()
-    await expect(page.locator('.test-next-status')).toContainText('Get ready')
-    await page.clock.runFor(13500)
-    await expect.poll(() => payloads.length).toBe(hand === 'left' ? 1 : 2)
-    if (hand === 'left') {
-      await expect(page.getByRole('button', { name: 'Start right hand', exact: true })).toBeEnabled()
-      await expect(page.locator('.test-continue')).toBeDisabled()
-      await page.reload()
-    }
-  }
-  expect(hands).toEqual(['left', 'right'])
-  for (const payload of payloads) {
-    expect(payload.frames.length).toBeGreaterThan(0)
-    expect(payload.frames.every(frame => frame.lm?.length === 4)).toBe(true)
-    expect(payload.frames.every((frame, i) => i === 0 || frame.t_ms > payload.frames[i - 1].t_ms)).toBe(true)
-  }
+  await openTap(page, 'left')
+  await expect(page.getByText('Testing hand: Left hand', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Start left hand', exact: true }).click()
+  await expect(page.locator('.test-next-status')).toContainText('Get ready')
+  await page.clock.runFor(13500)
+  await expect.poll(() => payloads.length).toBe(1)
+  expect(hands).toEqual(['left'])
+  expect(payloads[0].frames.length).toBeGreaterThan(0)
+  expect(payloads[0].frames.every(frame => frame.lm?.length === 4)).toBe(true)
+  expect(payloads[0].frames.every((frame, i) => i === 0 || frame.t_ms > payloads[0].frames[i - 1].t_ms)).toBe(true)
   await expect(page.locator('.test-continue')).toBeEnabled()
+  await expect(page.getByRole('button', { name: /^Start (left|right) hand$/ })).toHaveCount(0)
 })
 test('camera denied leaves skip available and creates no backend test', async ({ page }) => {
   await page.addInitScript(() => { navigator.mediaDevices.getUserMedia = async () => { throw new DOMException('Denied', 'NotAllowedError') } })
   let starts = 0
   await page.route('**/api/checks/42/tests', route => { starts++; return route.abort() })
   await openTap(page)
-  await page.getByRole('button', { name: 'Start left hand', exact: true }).click()
+  await page.getByRole('button', { name: 'Start right hand', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('Camera unavailable')
   expect(starts).toBe(0)
   await page.getByRole('button', { name: 'Skip this step' }).click()
@@ -99,7 +92,7 @@ test('leaving tap releases the camera and closes the unfinished backend test', a
     return route.fulfill({ json: { test_id: 10, status: 'failed', fail_reason: 'no_taps_detected', result: null } })
   })
   await openTap(page)
-  await page.getByRole('button', { name: 'Start left hand', exact: true }).click()
+  await page.getByRole('button', { name: 'Start right hand', exact: true }).click()
   await expect(page.locator('.test-next-status')).toContainText('Get ready')
   await page.getByRole('link', { name: 'Back to home', exact: true }).click()
   await expect.poll(() => payload).toEqual({ frames: [] })

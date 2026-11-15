@@ -28,6 +28,7 @@ class Config:
     sim: SimParams
     board_host: str = "127.0.0.1"
     board_port: int = 7700
+    board_analysis_port: int = 7701
     db_path: Path = field(default=DEFAULT_DB_PATH)
     cors_origin: str = "http://localhost:5173"
     replay_test_id: int | None = None

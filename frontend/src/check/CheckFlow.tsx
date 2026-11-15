@@ -7,7 +7,7 @@ import { CheckPage } from './CheckPage'
 import { CheckSummary } from './CheckSummary'
 import { CheckResults } from './CheckResults'
 import { LiveCheckPage } from './LiveCheckPage'
-import { availableStep, connectCheck, defaultMode, finishRun, freshSession, isComplete, readSession, skipStep, steps, storageKey, type CheckStep, type Mode, type SignalPoint } from './checkSession'
+import { availableStep, chooseHand, connectCheck, defaultMode, finishRun, freshSession, isComplete, readSession, skipStep, steps, storageKey, type CheckStep, type Mode, type SignalPoint } from './checkSession'
 export function CheckFlow({ stream }: { stream: SensorStream }) {
   const { step = 'connect' } = useParams()
   const [session, setSession] = useState(() => readSession(defaultMode))
@@ -18,20 +18,21 @@ export function CheckFlow({ stream }: { stream: SensorStream }) {
   if (!reviewPage && index < 0) return <Navigate to="/check/connect" replace/>
   if ((reviewPage && allowed < 5) || index > allowed) return <Navigate to={`/check/${steps[Math.min(allowed, 4)]}`} replace/>
   if (reviewPage && session.mode === 'sensor' && session.checkId !== undefined) return <Navigate to={`/results/${session.checkId}`} replace/>
-  function changeMode(mode: Mode) { setSession(freshSession(mode)) }
+  function changeMode(mode: Mode) { setSession(s => freshSession(mode, s.hand)) }
   const current = step as CheckStep
   // A sensor-mode step completes all its runs at once: the backend stores one test per step.
   const completeStep = () => setSession(s => { let next = s; while (!isComplete(next, current)) { const after = finishRun(next, current); if (after === next) break; next = after } return next })
   return <div className="check-app">
     <CheckHeader current={step} session={session}/>
     {step === 'complete'
-      ? <CheckSummary session={session} onReset={() => setSession(freshSession(session.mode))}/>
+      ? <CheckSummary session={session} onReset={hand => setSession(freshSession(session.mode, hand))}/>
       : step === 'results' ? <CheckResults session={session}/>
       : session.mode === 'sensor' && current !== 'connect'
         ? <LiveCheckPage key={step} step={current} session={session} stream={stream}
             onDone={completeStep} onTapDone={() => setSession(s => finishRun(s, 'tap'))} onSkip={() => setSession(s => skipStep(s, current))}/>
         : <CheckPage key={step} step={current} session={session} stream={stream} onMode={changeMode}
-            onConnect={(checkId, hand, minutes) => setSession(s => connectCheck(s, checkId, hand, minutes))}
+            onHand={hand => setSession(s => chooseHand(s, hand))}
+            onConnect={(checkId, minutes) => setSession(s => connectCheck(s, checkId, minutes))}
             onFinish={(samples?: SignalPoint[]) => setSession(s => finishRun(s, current, samples))}/>}
   </div>
 }

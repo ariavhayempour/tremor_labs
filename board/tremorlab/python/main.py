@@ -1,12 +1,20 @@
-# Relay only: Bridge batches -> NDJSON on TCP 7700, and LED lines from the Mac -> Bridge.call.
+# Relay (Bridge batches -> NDJSON on TCP 7700, LED lines -> Bridge.call) plus the analysis server on 7701.
 import json
+import os
 import queue
 import socket
+import sys
 import threading
 
-from arduino.app_utils import *
+# numpy + scipy are unpacked here by `make board-deploy`; first on the path, before anything imports numpy.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "vendor"))
+
+from arduino.app_utils import *  # noqa: E402
+
+import analysis_server  # noqa: E402
 
 PORT = 7700
+ANALYSIS_PORT = 7701
 SEND_TIMEOUT_S = 1.0
 LED_CALL_TIMEOUT_S = 2
 LED_QUEUE_MAX = 32
@@ -117,4 +125,5 @@ Bridge.provide("tof", on_tof)
 Bridge.provide("status", on_status)
 threading.Thread(target=_serve, daemon=True).start()
 threading.Thread(target=_led_worker, daemon=True).start()
+analysis_server.start(ANALYSIS_PORT, logger.info)
 App.run()

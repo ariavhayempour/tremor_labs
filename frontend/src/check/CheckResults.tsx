@@ -10,7 +10,7 @@ export function CheckResults({ session }: { session: CheckSession }) {
     <div className="results-heading"><div><h1>{copy.flow.resultsTitle}</h1><p>{session.mode === 'demo' ? copy.flow.resultDemo : copy.flow.complete}</p></div><Link className="summary-home back-link" to="/check/complete"><Icon name="back" size={16}/>{copy.flow.backSummary}</Link></div>
     <div className="results-grid">{resultSteps.map(step => {
       const record = session.records[step]
-      return record ? <ResultCard key={step} step={step} record={record}/> : null
+      return record ? <ResultCard key={step} step={step} record={record} hand={session.hand}/> : null
     })}</div>
     <div className="results-bottom"><Link className="summary-home back-link" to="/"><Icon name="back" size={16}/>{copy.back}</Link><footer>{copy.footer}</footer></div>
   </main>

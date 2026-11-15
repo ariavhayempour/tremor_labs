@@ -20,11 +20,12 @@ define run_script
 	$(SCRIPT_ENV) scripts/$(1) $(2)
 endef
 
-.PHONY: help dev board-link seed demo test test-e2e lint typecheck build doctor rate dump-ws
+.PHONY: help dev board-link board-sync board-wheels board-deploy seed demo test test-e2e lint typecheck build doctor rate dump-ws
 
 help:
 	@echo "make dev [SENSOR_SOURCE=sim|board|replay]  backend :8000 + frontend :5173"
-	@echo "make board-link                            adb forward tcp:7700 tcp:7700"
+	@echo "make board-link                            adb forward tcp:7700 (stream) + tcp:7701 (analysis)"
+	@echo "make board-deploy                          copy analysis + wheels to the UNO Q app and restart it"
 	@echo "make seed | demo                           demo data / rehearsal mode (replay + seeded DB)"
 	@echo "make test | test-e2e | lint | typecheck | build"
 	@echo "make doctor | rate | dump-ws               hardware checks / measured Hz / /ws sample"
@@ -38,6 +39,35 @@ dev: $(if $(filter board,$(SENSOR_SOURCE)),board-link)
 board-link:
 	@test -n "$(ADB)" || { echo "adb not found: install App Lab or brew install android-platform-tools"; exit 1; }
 	$(ADB) forward tcp:7700 tcp:7700
+	$(ADB) forward tcp:7701 tcp:7701
+
+# The board image has no SciPy and no internet, so numpy + scipy wheels are unpacked into python/vendor/.
+BOARD_APP := board/tremorlab
+BOARD_APP_PATH := /home/arduino/ArduinoApps/tremorlab
+BOARD_WHEELS_DIR := board/.wheels
+BOARD_VENDOR := $(BOARD_APP)/python/vendor
+BOARD_WHEELS := numpy==2.5.4 scipy==1.18.1
+BOARD_APP_CLI := export TMPDIR=/tmp; arduino-app-cli app
+
+board-wheels:
+	@ls $(BOARD_WHEELS_DIR)/scipy-1.18.1-*.whl >/dev/null 2>&1 && ls $(BOARD_WHEELS_DIR)/numpy-2.5.4-*.whl >/dev/null 2>&1 || \
+	uvx pip download --only-binary=:all: --no-deps --python-version 3.13 --implementation cp --abi cp313 \
+		--platform manylinux_2_28_aarch64 --platform manylinux_2_17_aarch64 --platform manylinux2014_aarch64 \
+		-d $(BOARD_WHEELS_DIR) $(BOARD_WHEELS)
+
+board-sync: board-wheels
+	rm -rf $(BOARD_APP)/python/tremorlab $(BOARD_VENDOR)
+	mkdir -p $(BOARD_APP)/python/tremorlab $(BOARD_VENDOR)
+	cp -R $(BACKEND)/tremorlab/analysis $(BOARD_APP)/python/tremorlab/analysis
+	touch $(BOARD_APP)/python/tremorlab/__init__.py
+	for w in $(BOARD_WHEELS_DIR)/*.whl; do unzip -q -o "$$w" -d $(BOARD_VENDOR); done
+	find $(BOARD_APP)/python -name __pycache__ -type d -prune -exec rm -rf {} +
+
+board-deploy: board-sync
+	@test -n "$(ADB)" || { echo "adb not found: install App Lab or brew install android-platform-tools"; exit 1; }
+	$(ADB) push $(BOARD_APP)/app.yaml $(BOARD_APP)/python $(BOARD_APP_PATH)/
+	-$(ADB) shell '$(BOARD_APP_CLI) stop $(BOARD_APP_PATH)'
+	$(ADB) shell '$(BOARD_APP_CLI) start $(BOARD_APP_PATH)'
 
 seed:
 	$(call run_script,seed.py,--db $(SEED_DB) --reset)

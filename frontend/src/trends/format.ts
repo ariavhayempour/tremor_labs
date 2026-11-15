@@ -1,4 +1,5 @@
 import { copy } from '../copy'
+import type { Hand } from '../api/types'
 import { MEASURES, type MeasureKey } from './model'
 const t = copy.trends
 
@@ -26,6 +27,7 @@ export const unitOf = (key: MeasureKey) => t.units[MEASURES[key].unit]
 /** Unit to print after a value; scores read as bare numbers. */
 export const unitAfter = (key: MeasureKey) => MEASURES[key].unit === 'score' ? '' : ` ${unitOf(key)}`
 
+export const handName = (hand: Hand | null) => hand === 'left' ? t.left : hand === 'right' ? t.right : '—'
 /** Minutes → '3 h 59 min'. */
 export function duration(minutes: number): string {
   const total = Math.max(0, Math.round(minutes)), h = Math.floor(total / 60), m = total % 60

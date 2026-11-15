@@ -37,18 +37,18 @@ The app has two modes. They share every screen, but the data comes from differen
 | Check flow | "Demo mode" runs a simulated check locally and records nothing | "Sensor mode" (the default) records on the backend |
 | Home trends | Sample data, labeled as such | `/api/insights/*` and `GET /api/checks?details=false` |
 | Trends (`/dashboard`) | Sample data, labeled as such | Sample data, labeled as such, until it is switched to `GET /api/checks` and `GET /api/doses` (see below) |
-| Settings | Saved in the browser | `GET/PUT /api/settings` (the hand also syncs from the Settings dialog) |
+| Settings | Saved in the browser | `GET/PUT /api/settings` (dose times, reminders and posture band; the frontend no longer reads or writes `tested_hand`) |
 | Report | Placeholder | `GET /api/report` |
 
 The Playwright suite runs in fixture mode, so it needs no backend.
 
 ### Sensor mode check flow
 
-1. **Connect:** `GET /api/health` reports the board link and both sensors. The medication question then creates the check (`POST /api/checks`). Its choices are Just now, 30 min, 1–4 h and Not yet; they map to `now`, `hours_ago` and `not_yet`. The tested hand comes from `/api/settings`.
+1. **Connect:** `GET /api/health` reports the board link and both sensors. The medication question then creates the check (`POST /api/checks`). Its choices are Just now, 30 min, 1–4 h and Not yet; they map to `now`, `hours_ago` and `not_yet`. Before that, the person picks **Left hand** or **Right hand** for this check. The choice locks once the check is created, and every test in the check is started with that `hand`. To track both hands, the person runs two checks; the summary and results pages offer "Now check your left/right hand", which opens a new check with the other hand selected.
 2. **Rest:** a 30 s recording on the wall clock.
 3. **Posture:** runs until there are 30 s of in-band time, taken from `position.valid_seconds`. It gives up after 75 s, and the backend needs at least 20 s.
 4. **Reach:** a single recording. The app sends `POST /api/tests/{id}/mark` before attempts 2 and 3. On the simulator, each attempt also sends `PUT /api/sim {"action": "descent"}`.
-5. **Tap:** allow camera access, then record the left and right hand for 10 seconds each after a 3-second countdown. MediaPipe runs locally and sends landmarks to the existing tap-data endpoint. Retry failed recordings or skip the step; successful hands are saved independently.
+5. **Tap:** allow camera access, then record the check's hand for 10 seconds after a 3-second countdown. MediaPipe runs locally and sends landmarks to the existing tap-data endpoint. Retry a failed recording or skip the step.
 6. **Results:** `/results/:checkId` reads `GET /api/checks/{id}`.
 
 Every test step stops on a link drop (a `source` message with `connected: false`). A failed test shows friendly copy for its `fail_reason` with a Try again button, and any test step can be skipped. LED cues follow the map in `docs/demo.md` and are best effort.
@@ -85,10 +85,17 @@ into `public/mediapipe/` (ignored generated assets). Both `npm run dev` and
 `npm run build` do this automatically. Use localhost or HTTPS for camera access.
 Camera permission is requested only when starting a real tap recording; demo
 mode stays simulated. Leaving the step releases the camera and closes unfinished
-tap tests with an empty frame submission. Completed left-hand progress survives
-refresh before recording the right hand. The UI tap counter is feedback only.
+tap tests with an empty frame submission. The UI tap counter is feedback only.
 
 Manual hardware check: start a sensor check, reach Tap, allow the camera, and
-record each hand. Confirm the landmark overlay, tap counter, and backend result.
+record the chosen hand. Confirm the landmark overlay, tap counter, and backend result.
 Browser automation checks camera lifecycle and request contracts, but cannot
 validate tracking accuracy on a person's hand.
+
+### Trends: hand filter and Compare hands
+
+Each check records a single hand: every test in it shares one `hand`, and `checkHand()` in `src/trends/model.ts` reads it from the first test.
+
+- **Hand filter** (Both hands / Left hand / Right hand, `?hand=left|right`) applies to the Simple and Detailed views and to day pages. Choosing one hand limits the checks to that hand and recomputes the first-week reference and the last-3-days figures from that hand only. Chart scales always come from every check, so switching hands never rescales a chart. With both hands shown, tapping is drawn as separate left and right lines, and the other measures average across both hands.
+- **Compare hands** (`?view=compare`) uses the selected period. It shows the left and right averages for rest, posture, reach and tapping, a daily chart of each with left and right as separate lines, and a table of every measure with "Right compared with left" (about the same within 10%). The hand filter is hidden on this tab. Day pages offer only Simple and Detailed.
+- The sample data (`sampleTrends.ts`) models each sitting as a left-hand check followed by a right-hand check five minutes later.

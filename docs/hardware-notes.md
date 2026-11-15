@@ -206,3 +206,11 @@ The build then installs from `~/.arduino15/staging/libraries/` ("already downloa
 - **Router logs:** `journalctl -u arduino-router.service` shows `ERROR Error in connection err="invalid packet, expected array, got: int8"` around flashes. Its serial stream to the MCU (`/dev/ttyHS1`) had lost sync.
 - **Fix:** power-cycle the board (unplug USB, wait 5 s, re-plug, wait about 40 s) or `sudo systemctl restart arduino-router.service`.
 - The `invalid packet` line appears on every flash and is usually harmless. The stuck state was seen once, after many flashes in a row.
+
+## Board-side analysis (`board/tremorlab`, measured 2026-11-15)
+
+- **App image Python packages** (`python-apps-base:0.5.0`): Python 3.13.9, aarch64, glibc 2.41, uv 0.9.4. **NumPy 2.2.6 is preinstalled; SciPy is not.**
+- **`python-libraries/*.whl` does not work offline for SciPy.** The image's `/run.sh` runs `uv pip install <wheel>` on each wheel in `/app/python-libraries/` without `--no-deps`/`--offline`. NumPy installed, but the SciPy install tried `https://pypi.org/simple/numpy/` and failed (no route). It still renames every wheel to `.whl.installed`, so the failure isn't retried.
+- **What works:** unpack the numpy 2.5.4 and scipy 1.18.1 `cp313 manylinux_2_28_aarch64` wheels on the Mac into `python/vendor/` and put that first on `sys.path` in `main.py`, before `arduino.app_utils` is imported. `make board-deploy` does this. About 173 MB on the board.
+- **Timing over `adb forward tcp:7701`:** 30 s rest analysis ≈ 93 ms round trip (board compute ≈ 60–90 ms), 30 s posture ≈ 126 ms, live 8 s spectrum ≈ 35 ms, reach ≈ 10 ms. Results equal the Mac's to ~1e-16.
+- `app start` after a push recompiled and reflashed the (unchanged) sketch offline without errors, since the Bridge helper libraries were already downloaded.

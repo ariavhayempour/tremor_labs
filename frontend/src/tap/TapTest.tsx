@@ -20,8 +20,7 @@ export function TapTest({ session, onDone, onSkip }: { session: CheckSession; on
   const [count, setCount] = useState(0)
   const [missing, setMissing] = useState(false)
   const [error, setError] = useState('')
-  const runs = session.records.tap?.runs ?? 0
-  const hand = runs === 0 ? 'left' : 'right'
+  const hand = session.hand
   const complete = isComplete(session, 'tap')
   const completionLabel = session.records.tap?.skipped ? copy.sensorCheck.skipped : copy.flow.complete
   const busy = ['loading', 'preparing', 'recording', 'saving'].includes(phase)
@@ -121,10 +120,9 @@ export function TapTest({ session, onDone, onSkip }: { session: CheckSession; on
   const status = error || (complete ? copy.flow.readyToContinue : missing ? c.moveIntoLight : phase === 'preparing' ? `${c.getReady} ${seconds}` : phase === 'saving' ? copy.sensorCheck.analyzing : c.local)
   const sidebar = <>
     <div className="test-hand">{copy.sensorCheck.testingHand}: {hand === 'left' ? copy.flow.leftHand : copy.flow.rightHand}</div>
-    <div className="test-progress"><span>{phase === 'recording' ? copy.flow.recording : phase === 'preparing' ? c.getReady : copy.flow.ready}</span><strong>{complete ? completionLabel : `${phase === 'preparing' ? seconds : Math.max(0, Math.ceil(10 - seconds))} s`}</strong><progress aria-label={copy.flow.progress} max={10} value={complete ? 10 : phase === 'recording' ? seconds : 0}/><small>{runs} / 2 {copy.flow.hands}</small></div>
+    <div className="test-progress"><span>{phase === 'recording' ? copy.flow.recording : phase === 'preparing' ? c.getReady : copy.flow.ready}</span><strong>{complete ? completionLabel : `${phase === 'preparing' ? seconds : Math.max(0, Math.ceil(10 - seconds))} s`}</strong><progress aria-label={copy.flow.progress} max={10} value={complete ? 10 : phase === 'recording' ? seconds : 0}/></div>
     {!complete && <button className="test-start hover-sweep" disabled={busy} onClick={() => void start()}>{phase === 'loading' ? c.loading : phase === 'saving' ? copy.sensorCheck.analyzing : phase === 'failed' ? copy.sensorCheck.retry : hand === 'left' ? copy.flow.startLeft : copy.flow.startRight}</button>}
     {!complete && <button className="test-skip" disabled={busy} onClick={onSkip}>{copy.sensorCheck.skip}</button>}
-    {runs === 1 && !busy && <p>{copy.flow.otherHand}</p>}
   </>
   const output = <div className="tap-output"><div className="tap-camera"><video ref={video} muted playsInline aria-label={c.preview}/><canvas ref={overlay} width={640} height={480} aria-hidden="true"/>{!busy && !complete && <span className="tap-camera-idle">{c.cameraIdle}</span>}</div><p>{count} {c.taps}</p>{missing && <p role="alert">{c.moveIntoLight}</p>}{error && <p role="alert">{error}</p>}</div>
   return <CheckShell step="tap" session={session} sidebar={sidebar} output={output} status={status}/>

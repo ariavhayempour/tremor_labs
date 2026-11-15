@@ -71,6 +71,7 @@ def run_doctor(**kw: Any) -> list[Any]:
         "bundled": lambda: [],
         "run": fake_run(ADB_OK),
         "connect": lambda *_a, **_k: FakeSock(relay_lines()),
+        "probe": lambda: {"ok": True, "result": {}},
     }
     defaults.update(kw)
     return doctor.run_checks(**defaults)
@@ -99,6 +100,7 @@ def test_doctor_all_pass_exit_zero() -> None:
         "status",
         "sensors",
         "rates",
+        "analysis",
     ]
     assert all(r.ok for r in results), [(r.name, r.detail) for r in results]
     assert doctor.exit_code(results) == 0
@@ -145,3 +147,17 @@ def test_doctor_no_status_line_fails() -> None:
     data = b"".join(line + b"\n" for line in relay_lines().splitlines() if b'"status"' not in line)
     results = run_doctor(connect=lambda *_a, **_k: FakeSock(data))
     assert results[4].ok is False and "power-cycle" in results[4].hint.lower()
+
+
+def test_doctor_analysis_unreachable_hint() -> None:
+    def refused() -> dict[str, Any]:
+        raise ConnectionRefusedError("refused")
+
+    analysis = run_doctor(probe=refused)[-1]
+    assert analysis.name == "analysis" and analysis.ok is False
+    assert "board-deploy" in analysis.hint
+
+
+def test_doctor_analysis_board_error_fails() -> None:
+    analysis = run_doctor(probe=lambda: {"ok": False, "error": "internal"})[-1]
+    assert analysis.ok is False and "internal" in analysis.detail

@@ -28,6 +28,7 @@ cd frontend && pnpm install    # once frontend/ exists
 | `make demo` | Rehearsal mode: copies the seeded DB to `backend/data/demo.db`, then runs `dev` with the replay source on it. The judging script and its fallbacks are in `docs/demo.md`. |
 | `make test` / `make test-e2e` | pytest (backend) + vitest / Playwright (frontend). |
 | `make lint` / `make typecheck` / `make build` | ruff / mypy, plus the frontend's lint, `tsc` and `vite build`. |
+| `make board-deploy` | Copies `backend/tremorlab/analysis/` and vendored NumPy/SciPy into `board/tremorlab/python/`, pushes the app to the UNO Q over adb and restarts it. Run it after any change to `analysis/` or `board/tremorlab/python/`. The first run downloads the two wheels once (Mac internet). |
 | `make doctor` / `make rate` | Hardware chain checklist / measured IMU and ToF rates. |
 | `make dump-ws` | Prints about 3 s of simulator `/ws` messages as a JSON array (for `frontend/src/api/fixtures/ws_stream.json`). |
 

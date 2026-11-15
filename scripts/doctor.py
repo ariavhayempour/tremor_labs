@@ -1,4 +1,4 @@
-"""Hardware chain checklist: adb → device → port forward → relay → status → sensors → rates."""
+"""Hardware checklist: adb → device → forward → relay → status → sensors → rates → analysis."""
 
 import glob
 import json
@@ -14,6 +14,10 @@ from typing import Any
 
 RELAY_HOST = "127.0.0.1"
 RELAY_PORT = 7700
+ANALYSIS_PORT = 7701
+ANALYSIS_TIMEOUT_S = 5.0
+PROBE_FS_HZ = 100
+PROBE_SAMPLES = 400
 CONNECT_TIMEOUT_S = 2.0
 READ_WINDOW_S = 3.0  # wall time to listen; a status line is sent once a second
 MIN_RATE_SPAN_S = 2.0  # MCU time needed before rates are judged
@@ -182,13 +186,39 @@ def check_rates(msgs: Sequence[dict[str, Any]]) -> CheckResult:
     return CheckResult("rates", False, detail, hint)
 
 
+def probe_analysis(host: str = RELAY_HOST, port: int = ANALYSIS_PORT) -> dict[str, Any]:
+    """Send a 4 s still-hand tremor request to the board's analysis server; returns the response."""
+    t = [i / PROBE_FS_HZ for i in range(PROBE_SAMPLES)]
+    acc = [[0.0, 0.0, 9.80665]] * PROBE_SAMPLES
+    req = {"op": "tremor", "args": {"t": t, "acc": acc, "trim": False}}
+    with socket.create_connection((host, port), timeout=ANALYSIS_TIMEOUT_S) as sock:
+        sock.sendall((json.dumps(req) + "\n").encode())
+        with sock.makefile("rb") as f:
+            resp: dict[str, Any] = json.loads(f.readline())
+    return resp
+
+
+def check_analysis(probe: Callable[[], dict[str, Any]]) -> CheckResult:
+    hint = "Run `make board-link` (forwards 7701) and `make board-deploy`, then check app logs."
+    start = time.monotonic()
+    try:
+        resp = probe()
+    except (OSError, ValueError) as e:
+        return CheckResult("analysis", False, f"no answer on port {ANALYSIS_PORT}: {e}", hint)
+    ms = (time.monotonic() - start) * 1000
+    if resp.get("ok") is True:
+        return CheckResult("analysis", True, f"board analyzed a test signal in {ms:.0f} ms")
+    return CheckResult("analysis", False, f"board error: {resp.get('error')}", hint)
+
+
 def run_checks(
     which: Callable[[str], str | None] = shutil.which,
     bundled: Callable[[], list[str]] = _bundled_adb,
     run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
     connect: Callable[..., Any] = socket.create_connection,
+    probe: Callable[[], dict[str, Any]] = probe_analysis,
 ) -> list[CheckResult]:
-    names = ["adb", "device", "forward", "relay", "status", "sensors", "rates"]
+    names = ["adb", "device", "forward", "relay", "status", "sensors", "rates", "analysis"]
     results: list[CheckResult] = []
 
     def finish() -> list[CheckResult]:
@@ -237,6 +267,7 @@ def run_checks(
         return finish()
     results.append(check_sensors(state))
     results.append(check_rates(msgs))
+    results.append(check_analysis(probe))
     return finish()
 
 

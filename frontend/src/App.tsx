@@ -34,7 +34,7 @@ export default function App() {
       <header className={`topbar ${menuOpen ? 'open' : ''}`}>
         <NavLink to="/overview" className="brand" onClick={() => setMenuOpen(false)}>
           <span className="brand-icon"><Icon name="wave" size={21}/></span>
-          {copy.brand}<span className="brand-period">.</span>
+          {copy.brand}
         </NavLink>
         <button className="mobile-menu" aria-label={copy.menu} aria-controls="main-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
           <Icon name={menuOpen ? 'close' : 'menu'}/>

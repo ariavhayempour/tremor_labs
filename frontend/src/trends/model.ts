@@ -1,7 +1,8 @@
 import type { Bin, CheckOut, DoseOut, Hand, ResultOut, TestType } from '../api/types'
 import { localDate, windowStart } from '../dashboard/format'
 
-export type MeasureKey = 'rest' | 'restStrength' | 'restHz' | 'posture' | 'postureHz' | 'held' | 'reach' | 'endWobble' | 'tap' | 'tapL' | 'tapR' | 'sizeL' | 'sizeR' | 'rhythmL' | 'rhythmR'
+export type MeasureKey = 'rest' | 'restStrength' | 'restHz' | 'posture' | 'postureHz' | 'held' | 'reach' | 'endWobble' | 'tap' | 'tapSize' | 'tapRhythm' | 'tapL' | 'tapR' | 'sizeL' | 'sizeR' | 'rhythmL' | 'rhythmR'
+export type HandFilter = Hand | 'both'
 export type UnitKey = 'score' | 'ms2' | 'hz' | 's' | 'mm' | 'ratio' | 'taps' | 'pct'
 export interface Measure { unit: UnitKey; digits: number; get: (c: CheckOut) => number | null }
 export interface TrendDay { date: string; checks: CheckOut[] }
@@ -31,6 +32,8 @@ export const MEASURES: Record<MeasureKey, Measure> = {
   reach: { unit: 'mm', digits: 1, get: field('reach', 'smoothness') },
   endWobble: { unit: 'ratio', digits: 2, get: field('reach', 'wobble_ratio') },
   tap: { unit: 'taps', digits: 1, get: c => mean([field('tap', 'taps_per_sec', 'left')(c), field('tap', 'taps_per_sec', 'right')(c)]) },
+  tapSize: { unit: 'pct', digits: 0, get: c => mean([field('tap', 'amplitude_decrement', 'left', 100)(c), field('tap', 'amplitude_decrement', 'right', 100)(c)]) },
+  tapRhythm: { unit: 'pct', digits: 0, get: c => mean([field('tap', 'rhythm_cv', 'left', 100)(c), field('tap', 'rhythm_cv', 'right', 100)(c)]) },
   tapL: { unit: 'taps', digits: 1, get: field('tap', 'taps_per_sec', 'left') },
   tapR: { unit: 'taps', digits: 1, get: field('tap', 'taps_per_sec', 'right') },
   sizeL: { unit: 'pct', digits: 0, get: field('tap', 'amplitude_decrement', 'left', 100) },
@@ -38,7 +41,14 @@ export const MEASURES: Record<MeasureKey, Measure> = {
   rhythmL: { unit: 'pct', digits: 0, get: field('tap', 'rhythm_cv', 'left', 100) },
   rhythmR: { unit: 'pct', digits: 0, get: field('tap', 'rhythm_cv', 'right', 100) },
 }
-export const ALL_MEASURES = Object.keys(MEASURES) as MeasureKey[]
+/** Measures listed for checks of both hands: tapping is split by hand. */
+export const BOTH_HAND_MEASURES: MeasureKey[] = ['rest', 'restStrength', 'restHz', 'posture', 'postureHz', 'held', 'reach', 'endWobble', 'tapL', 'tapR', 'sizeL', 'sizeR', 'rhythmL', 'rhythmR']
+/** Measures listed for one hand's checks. */
+export const ONE_HAND_MEASURES: MeasureKey[] = ['rest', 'restStrength', 'restHz', 'posture', 'postureHz', 'held', 'reach', 'endWobble', 'tap', 'tapSize', 'tapRhythm']
+export const measuresFor = (hand: HandFilter) => hand === 'both' ? BOTH_HAND_MEASURES : ONE_HAND_MEASURES
+/** The hand a check recorded; every test in a check uses the same hand. */
+export const checkHand = (c: CheckOut): Hand | null => c.tests[0]?.hand ?? null
+export const byHand = (checks: CheckOut[], hand: HandFilter) => hand === 'both' ? checks : checks.filter(c => checkHand(c) === hand)
 
 const present = (xs: (number | null)[]) => xs.filter((v): v is number => v !== null && Number.isFinite(v))
 export function mean(xs: (number | null)[]): number | null { const v = present(xs); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null }
