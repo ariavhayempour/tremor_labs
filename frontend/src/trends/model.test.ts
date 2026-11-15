@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import type { CheckOut, ResultOut } from '../api/types'
-import { buildDays, compare, doseBins, firstWeek, lastDays, MEASURES, mean, position, quantile, usualRange } from './model'
+import { buildDays, byHand, checkHand, compare, doseBins, firstWeek, lastDays, MEASURES, mean, position, quantile, usualRange } from './model'
 import { sampleTrends } from './sampleTrends'
+import { forHand } from './useTrendsData'
 
 const NOW = new Date(2026, 10, 14, 22, 0)
 const blank: ResultOut = { peak_hz: null, strength_ms2: null, strength_score: null, tremor_detected: null, valid_seconds: null, smoothness: null, wobble_ratio: null, taps_per_sec: null, tap_amplitude: null, amplitude_decrement: null, rhythm_cv: null, details: {} }
@@ -19,9 +20,21 @@ describe('sample data', () => {
     expect(a.checks.every(c => new Date(c.created_at) <= NOW)).toBe(true)
     expect(a.doses).toHaveLength(14 * 3)
   })
-  test('every check has all four tests with both tap hands', () => {
+  test('every check has all four tests on one hand', () => {
     const { checks } = sampleTrends(NOW)
-    for (const c of checks) for (const key of ['rest', 'posture', 'reach', 'tapL', 'tapR'] as const) expect(MEASURES[key].get(c)).not.toBeNull()
+    for (const c of checks) {
+      expect(c.tests.map(x => x.type)).toEqual(['rest', 'posture', 'reach', 'tap'])
+      expect(new Set(c.tests.map(x => x.hand)).size).toBe(1)
+      for (const key of ['rest', 'posture', 'reach', 'tap'] as const) expect(MEASURES[key].get(c)).not.toBeNull()
+      expect(MEASURES[checkHand(c) === 'left' ? 'tapR' : 'tapL'].get(c)).toBeNull()
+    }
+  })
+  test('both hands are checked about equally', () => {
+    const { checks } = sampleTrends(NOW)
+    const left = byHand(checks, 'left').length, right = byHand(checks, 'right').length
+    expect(left + right).toBe(checks.length)
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1)
+    expect(byHand(checks, 'both')).toBe(checks)
   })
 })
 
@@ -61,5 +74,20 @@ describe('aggregation', () => {
     const { bins, returnsAfter } = doseBins(checks)
     expect(bins.map(b => [b.start_h, b.count])).toEqual([[0, 2], [1, 3], [3, 3]])
     expect(returnsAfter).toBe(3)
+  })
+})
+
+describe('hand filter', () => {
+  test('keeps one hand and recomputes that hand\'s first week and recent checks', () => {
+    const at = (d: number) => new Date(2026, 10, d, 9)
+    const withHand = (c: CheckOut, hand: 'left' | 'right'): CheckOut => ({ ...c, tests: c.tests.map(x => ({ ...x, hand })) })
+    const checks = [withHand(check(1, at(1), 10, 0.1, 60), 'left'), withHand(check(2, at(5), 20, 0.1, 60), 'right'), withHand(check(3, at(13), 30, 0.1, 60), 'left')]
+    const data = { now: NOW, checks, doses: [], reference: firstWeek(checks), recent: lastDays(checks, NOW), sample: true }
+    expect(forHand(data, 'both')).toBe(data)
+    const right = forHand(data, 'right')
+    expect(right.checks.map(c => c.id)).toEqual([2])
+    expect(right.reference.map(c => c.id)).toEqual([2])
+    expect(right.recent).toEqual([])
+    expect(forHand(data, 'left').recent.map(c => c.id)).toEqual([3])
   })
 })

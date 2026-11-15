@@ -3,7 +3,7 @@ import { BLUE, NAVY } from './chartTheme'
 import { ChartKey } from './ChartKey'
 import { CheckDataTable } from './CheckDataTable'
 import { DoseCurveChart } from './DoseCurveChart'
-import { doseBins, usualRange, type MeasureKey, type TrendDay } from './model'
+import { doseBins, measuresFor, usualRange, type HandFilter, type MeasureKey, type TrendDay } from './model'
 import { MeasureTable } from './MeasureTable'
 import { PeriodChart } from './PeriodChart'
 import type { Scales } from './scales'
@@ -12,7 +12,8 @@ const t = copy.trends
 const RAW_ROWS = 12
 
 /** The full view: every check, every measure, dose timing, and the raw values. */
-export function OverviewDetailed({ days, data, scale, onPick }: { days: TrendDay[]; data: TrendsData; scale: Scales; onPick: (date: string) => void }) {
+export function OverviewDetailed({ days, data, hand, scale, onPick }: { days: TrendDay[]; data: TrendsData; hand: HandFilter; scale: Scales; onPick: (date: string) => void }) {
+  const both = hand === 'both'
   const checks = days.flatMap(d => d.checks)
   const { bins, returnsAfter } = doseBins(checks)
   const every = (k: MeasureKey, title: string, body: string, y: [number, number], yFormat?: (v: number) => string) =>
@@ -21,11 +22,13 @@ export function OverviewDetailed({ days, data, scale, onPick }: { days: TrendDay
       <PeriodChart days={days} y={y} ticks={4} yFormat={yFormat} band={usualRange(data.reference, k)} label={title} onPick={onPick}
         series={[{ key: k, color: BLUE, every: true }, { key: k, color: BLUE, dots: false, width: 2 }]} tipRows={[{ key: k, label: t.measures[k] }]}/>
     </section>
-  const hands = (kl: MeasureKey, kr: MeasureKey, title: string, body: string, y: [number, number]) =>
+  // Both hands draw a line each; a single hand draws its own measure.
+  const hands = (kl: MeasureKey, kr: MeasureKey, k: MeasureKey, title: string, body: string, y: [number, number]) =>
     <section className="home-card trends-card" aria-labelledby={`trends-${kl}`}>
       <div className="trends-card-head"><div><h2 id={`trends-${kl}`}>{title}</h2><p>{body}</p></div></div>
       <PeriodChart days={days} y={y} ticks={4} height={230} label={title} onPick={onPick}
-        series={[{ key: kl, color: BLUE }, { key: kr, color: NAVY, dashed: true, hollow: true }]} tipRows={[{ key: kl, label: t.left }, { key: kr, label: t.right }]}/>
+        series={both ? [{ key: kl, color: BLUE }, { key: kr, color: NAVY, dashed: true, hollow: true }] : [{ key: k, color: BLUE }]}
+        tipRows={both ? [{ key: kl, label: t.left }, { key: kr, label: t.right }] : [{ key: k, label: t.measures[k] }]}/>
     </section>
   return <div className="trends-stack" role="tabpanel">
     <section className="home-card trends-card" aria-labelledby="trends-dose">
@@ -48,15 +51,15 @@ export function OverviewDetailed({ days, data, scale, onPick }: { days: TrendDay
     </div>
     <div>
       <div className="trends-grid3">
-        {hands('tapL', 'tapR', t.tapSpeedChart, t.tapSpeedBody, scale.tap)}
-        {hands('sizeL', 'sizeR', t.tapSizeChart, t.tapSizeBody, scale.size)}
-        {hands('rhythmL', 'rhythmR', t.tapRhythmChart, t.tapRhythmBody, scale.rhythm)}
+        {hands('tapL', 'tapR', 'tap', t.tapSpeedChart, t.tapSpeedBody, scale.tap)}
+        {hands('sizeL', 'sizeR', 'tapSize', t.tapSizeChart, t.tapSizeBody, scale.size)}
+        {hands('rhythmL', 'rhythmR', 'tapRhythm', t.tapRhythmChart, t.tapRhythmBody, scale.rhythm)}
       </div>
-      <ChartKey items={[['line', t.left], ['dash', t.right]]}/>
+      {both && <ChartKey items={[['line', t.left], ['dash', t.right]]}/>}
     </div>
     <section className="home-card trends-card" aria-labelledby="trends-profile">
       <div className="trends-card-head"><div><h2 id="trends-profile">{t.profileTitle}</h2><p>{t.profileBody}</p></div></div>
-      <MeasureTable label={t.profileLabel} sets={[{ label: t.firstWeek, checks: data.reference }, { label: t.lastThree, checks: data.recent }]}/>
+      <MeasureTable label={t.profileLabel} keys={measuresFor(hand)} sets={[{ label: t.firstWeek, checks: data.reference }, { label: t.lastThree, checks: data.recent }]}/>
     </section>
     <section className="home-card trends-card" aria-labelledby="trends-all">
       <div className="trends-card-head"><div><h2 id="trends-all">{t.allChecks}</h2><p>{checks.length} {t.allChecksBody}</p></div></div>

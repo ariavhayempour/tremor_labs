@@ -12,8 +12,10 @@ test('five-step check gates progression, supports pause and survives refresh', a
   await expect(page).toHaveURL(/\/check\/connect$/)
   const next = page.locator('.test-continue')
   await expect(next).toBeDisabled()
+  await page.getByRole('button', { name: 'Left hand', exact: true }).click()
   await page.getByRole('button', { name: 'Connect Devices', exact: true }).click()
   await page.clock.runFor(1300)
+  await expect(page.getByRole('button', { name: 'Right hand', exact: true })).toBeDisabled()
   await expect(next).toBeEnabled()
   await next.click()
   await expect(page).toHaveURL(/\/check\/rest$/)
@@ -55,11 +57,8 @@ test('five-step check gates progression, supports pause and survives refresh', a
   }
   await next.click()
   await expect(page).toHaveURL(/\/check\/tap$/)
+  await expect(page.getByText('Testing hand: Left hand', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Start left hand', exact: true }).click()
-  await getReady(page)
-  await page.clock.runFor(10500)
-  await expect(next).toBeDisabled()
-  await page.getByRole('button', { name: 'Start right hand', exact: true }).click()
   await getReady(page)
   await page.clock.runFor(10500)
   await expect(next).toBeEnabled()
@@ -74,14 +73,16 @@ test('five-step check gates progression, supports pause and survives refresh', a
   await expect(page.getByRole('heading', { name: 'Your check results', exact: true })).toBeVisible()
   await expect(page.locator('.result-card')).toHaveCount(4)
   await expect(page.locator('.result-card canvas')).toHaveCount(4)
-  await expect(page.getByText('2 hands completed', { exact: true })).toBeVisible()
+  await expect(page.getByText('Left hand · Last recorded attempt', { exact: true })).toBeVisible()
   await page.reload()
   await expect(page.locator('.result-card canvas')).toHaveCount(4)
   await page.getByRole('link', { name: 'Back to summary', exact: true }).click()
   await expect(page.getByRole('link', { name: 'See the result', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Start a new check' }).click()
+  await expect(page.getByText('Left hand checked', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Now check your right hand' }).click()
   await expect(page).toHaveURL(/\/check\/connect$/)
   await expect(page.locator('.test-continue')).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Right hand', exact: true })).toHaveAttribute('aria-pressed', 'true')
 })
 test('direct links cannot bypass unfinished steps and sensor errors keep Continue disabled', async ({ page }) => {
   await page.goto('/check/tap')
@@ -137,14 +138,14 @@ test('completion page and both actions fit without scrolling on desktop and mobi
   await page.goto('/check/results')
   await expect(page).toHaveURL(/\/check\/connect$/)
   await page.evaluate(() => {
-    const records = Object.fromEntries(['connect', 'rest', 'posture', 'reach', 'tap'].map(step => [step, { runs: step === 'reach' ? 3 : step === 'tap' ? 2 : 1, seconds: 30 }]))
+    const records = Object.fromEntries(['connect', 'rest', 'posture', 'reach', 'tap'].map(step => [step, { runs: step === 'reach' ? 3 : 1, seconds: 30 }]))
     sessionStorage.setItem('tremor-check-v2', JSON.stringify({ mode: 'demo', records }))
   })
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 650 }, { width: 390, height: 844 }, { width: 390, height: 740 }]) {
     await page.setViewportSize(viewport)
     await page.goto('/check/complete')
     await expect(page.getByRole('link', { name: 'See the result', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Start a new check', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Now check your left hand', exact: true })).toBeVisible()
     const layout = await page.evaluate(() => ({
       height: document.documentElement.scrollHeight,
       width: document.documentElement.scrollWidth,
@@ -169,7 +170,7 @@ for (const review of ['complete', 'results']) {
     await page.route('**/api/checks/42', route => route.fulfill({ status: 404, contentType: 'application/json', body: '{}' }))
     await page.goto('/check/connect')
     await page.evaluate(() => {
-      const records = Object.fromEntries(['connect', 'rest', 'posture', 'reach', 'tap'].map(step => [step, { runs: step === 'reach' ? 3 : step === 'tap' ? 2 : 1, seconds: 30 }]))
+      const records = Object.fromEntries(['connect', 'rest', 'posture', 'reach', 'tap'].map(step => [step, { runs: step === 'reach' ? 3 : 1, seconds: 30 }]))
       sessionStorage.setItem('tremor-check-v2', JSON.stringify({ mode: 'sensor', checkId: 42, hand: 'right', records }))
     })
     const backendResult = page.waitForResponse(response => response.url().endsWith('/api/checks/42'))

@@ -11,7 +11,7 @@ import { TapTest } from '../tap/TapTest'
 const t = copy.sensorCheck
 
 interface Props { step: TestStep; session: CheckSession; stream: SensorStream; onDone: () => void; onSkip: () => void; onTapDone: () => void }
-/** Sensor-mode steps; tap records a separate backend test for each hand. */
+/** Sensor-mode steps; every step records the hand chosen for this check. */
 export function LiveCheckPage(props: Props) {
   return props.step === 'tap' ? <TapTest session={props.session} onDone={props.onTapDone} onSkip={props.onSkip}/> : <LiveTest {...props}/>
 }
@@ -19,7 +19,7 @@ export function LiveCheckPage(props: Props) {
 
 function LiveTest({ step, session, stream, onDone, onSkip }: Props) {
   const complete = isComplete(session, step)
-  const hand = session.hand ?? 'right'
+  const hand = session.hand
   const live = useLiveTest({ step, checkId: session.checkId ?? 0, hand, stream, onDone })
   const running = live.phase === 'running'
   const counting = live.phase === 'countdown'

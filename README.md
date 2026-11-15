@@ -28,11 +28,14 @@ Then open `http://localhost:5173`.
 ## Run with the board
 
 **HUMAN ACTION REQUIRED:** plug the UNO Q into the Mac over USB-C and make sure App Lab is
-closed (it holds the `adb` connection). Then use two terminals, both from the repo root.
+closed (it holds the `adb` connection). Then use two terminals. Each one starts with `cd` into
+the repo, because the `adb push` path is relative; from any other folder it fails with
+`cannot stat 'board/tremorlab'`. Change `~/repos/tremor_tracker` if you cloned it elsewhere.
 
 **Terminal 1**: push the board app, restart it, and start the backend and frontend:
 
 ```bash
+cd ~/repos/tremor_tracker
 export PATH="$HOME/Library/Arduino15/packages/arduino/tools/adb/32.0.0:$PATH"
 adb push board/tremorlab /home/arduino/ArduinoApps/
 adb shell 'export TMPDIR=/tmp; arduino-app-cli app stop /home/arduino/ArduinoApps/tremorlab'
@@ -49,6 +52,7 @@ make dev SENSOR_SOURCE=board
 **Terminal 2**: once Terminal 1 shows the backend and frontend running:
 
 ```bash
+cd ~/repos/tremor_tracker
 export PATH="$HOME/Library/Arduino15/packages/arduino/tools/adb/32.0.0:$PATH"
 make doctor
 open -a "Google Chrome" http://localhost:5173

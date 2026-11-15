@@ -41,7 +41,7 @@ export function DayTimeChart({ checks, doses, allDoses, series, y, band, compact
         label={{ value: compact ? t.dose : `${t.dose} ${clockOfMinute(m)}`, position: 'top', fill: DOSE_INK, fontSize: 12, fontWeight: 600 }}/> })}
       <XAxis dataKey="x" type="number" domain={[START, END]} ticks={hourTicks} interval={0} allowDataOverflow axisLine={{ stroke: BASELINE }} tickLine={false} tick={{ fill: MUTED, fontSize: 12 }} tickFormatter={v => hourLabel(Number(v) / 60)}/>
       <YAxis type="number" domain={y} ticks={niceTicks(y[0], y[1], compact ? 4 : 5)} width={PLOT_LEFT} allowDataOverflow axisLine={false} tickLine={false} tick={{ fill: MUTED, fontSize: 12 }}/>
-      {series.map(s => <Line key={s.key} dataKey={s.key} type="linear" stroke={s.color} strokeWidth={2.5} strokeDasharray={s.dashed ? '6 5' : undefined} dot={dot(s)} activeDot={false} isAnimationActive={animate} animationDuration={700}>
+      {series.map(s => <Line key={s.key} dataKey={s.key} type="linear" stroke={s.color} strokeWidth={2.5} strokeDasharray={s.dashed ? '6 5' : undefined} dot={dot(s)} activeDot={false} connectNulls isAnimationActive={animate} animationDuration={700}>
         {s.values && <LabelList dataKey={s.key} position="top" offset={12} fill={INK} fontSize={compact ? 13 : 14} fontWeight={700} formatter={(v: unknown) => fmtMeasure(s.key, typeof v === 'number' ? v : null)}/>}
       </Line>)}
     </ComposedChart>}

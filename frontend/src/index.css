@@ -41,7 +41,6 @@ p { line-height: 1.6; }
 }
 .brand { display: flex; align-items: center; flex-shrink: 0; font-size: 18px; font-weight: 650; }
 .brand-icon { display: grid; place-items: center; background: #202020; color: #fff; width: 30px; height: 30px; border-radius: 6px; margin-right: 10px; }
-.brand-period { color: #777; }
 .topbar nav { display: flex; gap: 8px; margin: 0 auto; }
 .topbar nav a { position: relative; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 15px; border: 1px solid #00000016; border-radius: 8px; background: #ffffffa6; box-shadow: 0 4px 10px #00000004; font-size: 13px; color: #606060; }
 .topbar nav a:hover { color: #111; background: #00000005; }

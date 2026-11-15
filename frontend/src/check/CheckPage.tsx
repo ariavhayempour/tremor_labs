@@ -5,7 +5,7 @@ import { copy } from '../copy'
 import { Icon } from '../components/Icon'
 import { SegmentedControl } from '../components/SegmentedControl'
 import { Waveform } from '../viz/Waveform'
-import { createCheck, getHealth, getSettings, led } from '../api/client'
+import { createCheck, getHealth, led } from '../api/client'
 import type { CheckInRequest, Hand, Health } from '../api/types'
 import { MedicationPicker } from './MedicationPicker'
 import { healthProblems } from './liveMessages'
@@ -13,12 +13,13 @@ import { isComplete, requiredRuns, runSeconds, steps, type CheckSession, type Ch
 import { useCheckRecording } from './useCheckRecording'
 import { DeviceStatus } from './DeviceStatus'
 /** Demo-mode steps, plus the connect step in both modes (sensor mode creates the backend check here). */
-export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }: { step: CheckStep; session: CheckSession; stream: ReturnType<typeof useSensorStream>; onMode: (mode: Mode) => void; onFinish: (samples?: SignalPoint[]) => void; onConnect: (checkId: number, hand: Hand, minutes: number | null) => void }) {
+export function CheckPage({ step, session, stream, onMode, onFinish, onHand, onConnect }: { step: CheckStep; session: CheckSession; stream: ReturnType<typeof useSensorStream>; onMode: (mode: Mode) => void; onFinish: (samples?: SignalPoint[]) => void; onHand: (hand: Hand) => void; onConnect: (checkId: number, minutes: number | null) => void }) {
   const navigate = useNavigate()
   const text = copy.flow.steps[step]
   const demo = session.mode === 'demo'
   const complete = isComplete(session, step)
   const runs = session.records[step]?.runs ?? 0
+  const handLabel = session.hand === 'left' ? copy.flow.leftHand : copy.flow.rightHand
   const recording = useCheckRecording(step, onFinish, session.records[step]?.samples)
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
@@ -67,9 +68,8 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
   async function pick(body: CheckInRequest) {
     setCreating(true); setError('')
     try {
-      const hand = await getSettings().then(s => s.tested_hand, () => 'right' as const)
       const created = await createCheck(body)
-      if (alive.current) onConnect(created.check_id, hand, created.minutes_since_dose)
+      if (alive.current) onConnect(created.check_id, created.minutes_since_dose)
     } catch { if (alive.current) setError(copy.offline) }
     finally { if (alive.current) setCreating(false) }
   }
@@ -85,7 +85,7 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
   const counting = recording.phase === 'countdown'
   const waitingForNextRun = recording.phase === 'finished' && !complete
   const graphLabel = step === 'reach' ? copy.flow.distance : step === 'tap' ? copy.flow.fingerOpening : copy.axis
-  const startLabel = step === 'connect' ? copy.flow.connect : step === 'reach' ? `${copy.flow.startAttempt} ${runs + 1}` : step === 'tap' ? runs === 0 ? copy.flow.startLeft : copy.flow.startRight : copy.flow.start
+  const startLabel = step === 'connect' ? copy.flow.connect : step === 'reach' ? `${copy.flow.startAttempt} ${runs + 1}` : step === 'tap' ? session.hand === 'left' ? copy.flow.startLeft : copy.flow.startRight : copy.flow.start
   return <>
     <main className="test-workspace">
       <aside className="test-sidebar">
@@ -94,18 +94,23 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
           <div className="test-step-kicker">{copy.flow.step} {index + 1} {copy.flow.of} 5</div>
           <h1 id="test-title" ref={title} tabIndex={-1}>{text.title}</h1>
           {text.instructions.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
-          {step === 'tap' && <div className="test-hand"><Icon name="tap" size={18}/>{runs === 0 ? copy.flow.leftHand : copy.flow.rightHand}</div>}
+          {step === 'connect' && <div className="hand-choice">
+            <span>{copy.flow.handChoice}</span>
+            <SegmentedControl<Hand> label={copy.flow.handChoice} value={session.hand} disabled={checking || creating || complete} onChange={onHand} options={[{ value: 'left', label: copy.flow.leftHand }, { value: 'right', label: copy.flow.rightHand }]}/>
+            <small>{copy.flow.handHint}</small>
+          </div>}
+          {step !== 'connect' && <div className="test-hand"><Icon name={step === 'reach' ? 'reach' : step === 'tap' ? 'tap' : 'sensor'} size={18}/>{copy.sensorCheck.testingHand}: {handLabel}</div>}
           {step !== 'connect' && <div className="test-progress">
             <span>{complete ? copy.flow.complete : counting ? copy.flow.getReady : active ? copy.flow.recording : paused ? copy.flow.paused : waitingForNextRun ? copy.flow.runComplete : copy.flow.ready}</span>
             <strong>{complete ? <Icon name="check" size={20}/> : counting ? `${recording.countdown} ${copy.flow.seconds}` : `${Math.max(0, Math.ceil(runSeconds(step) - recording.elapsed))} ${copy.flow.seconds}`}</strong>
             <progress aria-label={copy.flow.progress} max={runSeconds(step)} value={complete ? runSeconds(step) : recording.elapsed}/>
-            {(step === 'reach' || step === 'tap') && <small>{runs} / {requiredRuns(step)} {step === 'reach' ? copy.flow.attempts : copy.flow.hands}</small>}
+            {step === 'reach' && <small>{runs} / {requiredRuns(step)} {copy.flow.attempts}</small>}
           </div>}
           {!complete && <button className="test-start hover-sweep" disabled={checking || creating || counting || (step !== 'connect' && !demo)} onClick={step === 'connect' ? () => void connect() : active ? recording.pause : paused ? recording.resume : recording.start}>
             <Icon name={active ? 'pause' : paused ? 'play' : step === 'connect' ? 'connect' : 'play'} size={17}/>{checking ? copy.flow.connecting : counting ? `${copy.flow.getReady} ${recording.countdown}` : active ? copy.flow.pause : paused ? copy.flow.resume : ready ? copy.sensorCheck.checkSensors : startLabel}
           </button>}
           {complete && <div className="test-completed"><Icon name="check" size={18}/>{copy.flow.complete}</div>}
-          {waitingForNextRun && <p className="run-message" role="status">{step === 'tap' ? copy.flow.otherHand : copy.flow.nextReach}</p>}
+          {waitingForNextRun && <p className="run-message" role="status">{copy.flow.nextReach}</p>}
         </section>
         <Link className="test-exit back-link" to="/overview"><Icon name="back" size={16}/>{copy.back}</Link>
       </aside>
@@ -119,7 +124,7 @@ export function CheckPage({ step, session, stream, onMode, onFinish, onConnect }
             : <>
                 <div className="test-graph-toolbar"><span><Icon name={step === 'reach' ? 'reach' : step === 'tap' ? 'tap' : 'wave'} size={18}/>{text.visualization}</span><span className="muted">{complete ? copy.flow.complete : paused ? copy.flow.paused : active ? copy.flow.recording : copy.flow.ready}</span></div>
                 {step === 'posture' && <div className="height-guide"><span>{copy.flow.handHeight}</span><strong>{recording.height} {copy.flow.mm}</strong><span className="height-band">{active || complete ? copy.flow.inRange : copy.flow.targetRange}</span></div>}
-                {step === 'tap' && <div className="tap-metrics"><span>{runs === 0 || (recording.phase === 'finished' && runs === 1) ? copy.flow.leftHand : copy.flow.rightHand}</span><strong>{recording.taps}<small>{copy.flow.taps}</small></strong></div>}
+                {step === 'tap' && <div className="tap-metrics"><span>{handLabel}</span><strong>{recording.taps}<small>{copy.flow.taps}</small></strong></div>}
                 <div className="test-graph"><div className="chart-label">{graphLabel}</div><Waveform buf={demo ? recording.buffer : stream.imu} min={step === 'reach' ? 0 : step === 'tap' ? 0 : -2} max={step === 'reach' ? 350 : step === 'tap' ? 1 : 2} seconds={step === 'reach' ? 6 : 5} label={text.graphLabel}/><div className="chart-bottom"><span>{step === 'reach' ? copy.flow.reachWindow : copy.sample}</span><span>{copy.timeAxis}</span></div></div>
               </>}
           <div className="test-next-row test-visualization-footer">

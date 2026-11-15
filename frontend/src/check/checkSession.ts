@@ -8,14 +8,15 @@ export type TestStep = Exclude<CheckStep, 'connect'>
 export type Mode = 'demo' | 'sensor'
 export interface SignalPoint { t: number; value: number }
 export interface StepRecord { runs: number; seconds: number; samples?: SignalPoint[]; skipped?: boolean }
-/** Sensor mode also tracks the backend check this browser session is filling in. */
-export interface CheckSession { mode: Mode; records: Partial<Record<CheckStep, StepRecord>>; checkId?: number; hand?: Hand; minutesSinceDose?: number | null }
+/** Every test in a check records the one hand chosen on the connect step; sensor mode also tracks its backend check. */
+export interface CheckSession { mode: Mode; hand: Hand; records: Partial<Record<CheckStep, StepRecord>>; checkId?: number; minutesSinceDose?: number | null }
 export const storageKey = 'tremor-check-v2'
 // Without the backend (fixture mode) only the simulated demo can run.
 export const defaultMode: Mode = USE_FIXTURES ? 'demo' : 'sensor'
-export const initialSession: CheckSession = { mode: 'demo', records: {} }
-export const freshSession = (mode: Mode): CheckSession => ({ ...initialSession, mode })
-export const requiredRuns = (step: CheckStep) => step === 'reach' ? 3 : step === 'tap' ? 2 : 1
+export const initialSession: CheckSession = { mode: 'demo', hand: 'right', records: {} }
+export const freshSession = (mode: Mode, hand: Hand = initialSession.hand): CheckSession => ({ mode, hand, records: {} })
+export const otherHand = (hand: Hand): Hand => hand === 'left' ? 'right' : 'left'
+export const requiredRuns = (step: CheckStep) => step === 'reach' ? 3 : 1
 export const runSeconds = (step: CheckStep) => step === 'connect' ? 0 : step === 'reach' ? 6 : step === 'tap' ? 10 : 30
 export const isComplete = (session: CheckSession, step: CheckStep) => (session.records[step]?.runs ?? 0) >= requiredRuns(step)
 export function availableStep(session: CheckSession): number {
@@ -33,8 +34,12 @@ export function skipStep(session: CheckSession, step: TestStep): CheckSession {
   const previous = session.records[step] ?? { runs: 0, seconds: 0 }
   return { ...session, records: { ...session.records, [step]: { ...previous, runs: requiredRuns(step), skipped: true } } }
 }
-export function connectCheck(session: CheckSession, checkId: number, hand: Hand, minutesSinceDose: number | null): CheckSession {
-  return finishRun({ ...session, checkId, hand, minutesSinceDose }, 'connect')
+/** The hand can change only until the connect step completes. */
+export function chooseHand(session: CheckSession, hand: Hand): CheckSession {
+  return isComplete(session, 'connect') || session.hand === hand ? session : { ...session, hand }
+}
+export function connectCheck(session: CheckSession, checkId: number, minutesSinceDose: number | null): CheckSession {
+  return finishRun({ ...session, checkId, minutesSinceDose }, 'connect')
 }
 export function readSession(defaultMode: Mode = 'demo'): CheckSession {
   const fallback = freshSession(defaultMode)
@@ -43,14 +48,13 @@ export function readSession(defaultMode: Mode = 'demo'): CheckSession {
     if (!data || typeof data !== 'object' || !('mode' in data) || !('records' in data) || !['demo', 'sensor'].includes(String(data.mode))) return fallback
     const records = data.records
     if (!records || typeof records !== 'object') return fallback
-    const session: CheckSession = { mode: data.mode as Mode, records: {} }
-    const checkId: unknown = Reflect.get(data, 'checkId')
     const hand: unknown = Reflect.get(data, 'hand')
+    const session = freshSession(data.mode as Mode, hand === 'left' || hand === 'right' ? hand : undefined)
+    const checkId: unknown = Reflect.get(data, 'checkId')
     const minutes: unknown = Reflect.get(data, 'minutesSinceDose')
     if (Number.isInteger(checkId)) session.checkId = Number(checkId)
-    if (hand === 'left' || hand === 'right') session.hand = hand
     if (minutes === null || (typeof minutes === 'number' && Number.isFinite(minutes))) session.minutesSinceDose = minutes
-    if (session.mode === 'sensor' && session.checkId === undefined) return freshSession('sensor')
+    if (session.mode === 'sensor' && session.checkId === undefined) return freshSession('sensor', session.hand)
     for (const step of steps) {
       const value: unknown = Reflect.get(records, step)
       if (value && typeof value === 'object' && 'runs' in value && Number.isInteger(value.runs) && Number(value.runs) > 0 && Number(value.runs) <= requiredRuns(step)) {
