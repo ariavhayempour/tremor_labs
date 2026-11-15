@@ -28,9 +28,17 @@ from tremorlab.db.queries import fail_stale_recordings
 from tremorlab.session import DEFAULT_ANALYZERS, TestSession
 from tremorlab.sources import make_source
 from tremorlab.sources.base import SensorSource
+from tremorlab.sources.board_analysis import board_analyzers
 from tremorlab.stream.broadcaster import Broadcaster
 
 log = logging.getLogger(__name__)
+
+
+def default_analyzers_for(config: Config) -> Analyzers:
+    """With the real board, signal analysis runs on the board; sim and replay analyze locally."""
+    if config.sensor_source == "board":
+        return board_analyzers(config.board_host, config.board_analysis_port)
+    return DEFAULT_ANALYZERS
 
 
 def create_app(
@@ -56,7 +64,7 @@ def create_app(
             conn,
             broadcaster,
             live,
-            analyzers=analyzers or DEFAULT_ANALYZERS,
+            analyzers=analyzers or default_analyzers_for(config),
             clock=clock or time.time,
         )
         app.state.conn = conn

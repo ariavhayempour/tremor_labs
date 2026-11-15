@@ -25,6 +25,7 @@ from tremorlab.db.models import FailReason, Hand, ResultRow, TestType
 from tremorlab.sources.base import SensorSource
 from tremorlab.stream.broadcaster import Broadcaster
 from tremorlab.stream.messages import (
+    Message,
     position_msg,
     round_sig,
     spectrum_msg,
@@ -181,6 +182,7 @@ class TestSession:
         self.clock = clock
         self._active: Recorder | None = None
         self._due: dict[str, float] = {}
+        self._spectrum_job: asyncio.Future[Message | None] | None = None
 
     @property
     def active(self) -> Recorder | None:
@@ -289,13 +291,38 @@ class TestSession:
         t, acc = rec.imu_window(LIVE_WINDOW_S)
         if len(t) < 2:
             return
+        if not self.analyzers.remote:
+            msg = self._spectrum(rec.kind, t, acc)
+            if msg is not None:
+                self.broadcaster.publish(msg)
+            return
+        # A network analyzer runs on a worker thread; skip this round while one is still in flight.
+        if self._spectrum_job is not None and not self._spectrum_job.done():
+            return
+        job = asyncio.get_running_loop().run_in_executor(None, self._spectrum, rec.kind, t, acc)
+        job.add_done_callback(self._publish_spectrum_job)
+        self._spectrum_job = job
+
+    def _spectrum(
+        self, kind: TestType, t: NDArray[np.float64], acc: NDArray[np.float64]
+    ) -> Message | None:
         try:
             r = self.analyzers.tremor(t, acc, trim=False)
         except (AnalysisError, NotImplementedError):
-            return
-        if rec.kind == "posture":
+            return None
+        if kind == "posture":
             r = apply_posture_gate(r)
-        self.broadcaster.publish(spectrum_msg(r.freqs, r.psd, r.peak_hz))
+        return spectrum_msg(r.freqs, r.psd, r.peak_hz)
+
+    def _publish_spectrum_job(self, job: "asyncio.Future[Message | None]") -> None:
+        if job.cancelled():
+            return
+        if job.exception() is not None:
+            log.warning("live spectrum failed: %r", job.exception())
+            return
+        msg = job.result()
+        if msg is not None and self._active is not None:
+            self.broadcaster.publish(msg)
 
     def _store(
         self,

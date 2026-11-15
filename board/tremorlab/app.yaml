@@ -1,5 +1,5 @@
 name: tremorlab
 icon: 🖐️
-description: Tremor Lab sensor streamer. The sketch samples Modulino Movement and Distance; Python relays NDJSON batches to the Mac on TCP 7700 and forwards LED commands back.
-ports: [7700]
+description: Tremor Lab sensor streamer and analyzer. The sketch samples Modulino Movement and Distance; Python relays NDJSON batches to the Mac on TCP 7700, forwards LED commands back, and runs the signal analysis on TCP 7701.
+ports: [7700, 7701]
 bricks: []

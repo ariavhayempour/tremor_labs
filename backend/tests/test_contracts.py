@@ -132,7 +132,13 @@ def test_analysis_stubs_import(module: str, names: list[str]) -> None:
 def test_analyzers_bundle_fields() -> None:
     from tremorlab.analysis import Analyzers
 
-    assert [f.name for f in dataclasses.fields(Analyzers)] == ["tremor", "posture", "reach", "tap"]
+    assert [f.name for f in dataclasses.fields(Analyzers)] == [
+        "tremor",
+        "posture",
+        "reach",
+        "tap",
+        "remote",
+    ]
 
 
 def test_analysis_error_carries_code() -> None:

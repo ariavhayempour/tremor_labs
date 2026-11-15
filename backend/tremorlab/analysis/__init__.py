@@ -14,3 +14,4 @@ class Analyzers:
     posture: Callable[..., TremorResult]
     reach: Callable[..., ReachResult]
     tap: Callable[..., TapResult]
+    remote: bool = False  # calls go over the network, so keep them off the event loop

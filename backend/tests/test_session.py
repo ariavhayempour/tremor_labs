@@ -357,3 +357,42 @@ def test_tick_posture_spectrum_uses_posture_gate(rig: Rig) -> None:
     rig.session.tick()
     [spec] = rig.messages("spectrum")
     assert spec["peak_hz"] is None
+
+
+def test_remote_spectrum_runs_off_the_event_loop() -> None:
+    import asyncio
+    import dataclasses
+    import threading
+
+    real = default_analyzers()
+    release = threading.Event()
+    calls: list[str] = []
+
+    def slow_tremor(*args: Any, **kw: Any) -> Any:
+        calls.append(threading.current_thread().name)
+        release.wait(2)
+        return real.tremor(*args, **kw)
+
+    rig = Rig(real=True)
+    rig.session.analyzers = dataclasses.replace(real, tremor=slow_tremor, remote=True)
+
+    batches = sim_batches(10)  # built before the loop starts: sim_batches runs its own loop
+
+    async def scenario() -> None:
+        rig.session.start(rig.check_id, "rest", "right")
+        rig.feed(batches)
+        rig.session.tick()  # returns at once although the analyzer is blocked
+        rig.clock.now += 0.25
+        rig.session.tick()  # skipped: the first request is still in flight
+        assert rig.messages("spectrum") == []
+        release.set()
+        job = rig.session._spectrum_job
+        assert job is not None
+        await job
+        await asyncio.sleep(0)
+
+    asyncio.run(scenario())
+    [spec] = rig.messages("spectrum")
+    assert spec["peak_hz"] is not None
+    assert len(calls) == 1 and calls[0] != threading.main_thread().name
+    rig.conn.close()
