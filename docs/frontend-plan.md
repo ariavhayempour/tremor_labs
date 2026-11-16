@@ -20,7 +20,7 @@
 **Tech Stack:** Vite, React, TypeScript strict, Tailwind CSS v4, shadcn/ui, react-router, Recharts, `@mediapipe/tasks-vision`, vitest, Playwright, pnpm.
 
 **Read first:**
-- `PRD.md` (sections 5 and 6, the check flow and the frontend requirements)
+- `docs/PRD.md` (sections 5 and 6, the check flow and the frontend requirements)
 - `CLAUDE.md` (project rules)
 - **The API contract, `docs/contracts.md`.** It lands on `main` about 1.5 h in; until then, use the Interfaces blocks below.
 

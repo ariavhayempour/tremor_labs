@@ -167,7 +167,7 @@ Send raw IMU/ToF at ~10 Hz batches; send `spectrum` at ~4 Hz during tremor tests
 ## 7. Repository Structure
 ```
 tremor-lab/
-├── PRD.md
+├── docs/                     # project documentation (PRD.md lives here)
 ├── board/                    # Arduino App Lab app for the UNO Q (sketch + Python bridge)
 ├── backend/
 │   ├── tremorlab/
