@@ -1,5 +1,7 @@
 # Planning artifacts (always untracked)
+CLAUDE.md
 docs/superpowers/
+.superpowers/
 tasks/
 SPEC.md
 plan.md
