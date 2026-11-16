@@ -11,6 +11,12 @@ stores results in SQLite, and a Vite + React frontend (`localhost:5173`) with th
 tap test. If the board stops answering, the Mac runs the same analysis code itself. How it
 fits together: [`docs/technical-overview.md`](docs/technical-overview.md).
 
+## Demo Video
+
+[https://www.loom.com/share/1e26d5cacf5f437bb3bdafb7af50eaec](https://www.loom.com/share/1e26d5cacf5f437bb3bdafb7af50eaec)
+
+
+
 ## First-time setup
 
 ```bash
